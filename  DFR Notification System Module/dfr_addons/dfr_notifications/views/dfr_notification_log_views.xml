@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- dfr.notification.log Tree View -->
+        <record id="view_dfr_notification_log_tree" model="ir.ui.view">
+            <field name="name">dfr.notification.log.tree</field>
+            <field name="model">dfr.notification.log</field>
+            <field name="arch" type="xml">
+                <tree string="Notification Dispatch Logs" decoration-danger="status == 'failed'" decoration-success="status == 'sent' or status == 'delivered'" decoration-info="status == 'pending'">
+                    <field name="dispatch_timestamp"/>
+                    <field name="template_id"/>
+                    <field name="recipient_partner_id" optional="show"/>
+                    <field name="recipient_email" optional="show"/>
+                    <field name="recipient_phone" optional="show"/>
+                    <field name="channel_type"/>
+                    <field name="subject" optional="hide"/> <!-- Often long for SMS/Push -->
+                    <field name="status"/>
+                    <field name="gateway_config_id" optional="show"/>
+                    <field name="error_message" optional="show"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- dfr.notification.log Form View (Read-Only) -->
+        <record id="view_dfr_notification_log_form" model="ir.ui.view">
+            <field name="name">dfr.notification.log.form</field>
+            <field name="model">dfr.notification.log</field>
+            <field name="arch" type="xml">
+                <form string="Notification Dispatch Log" create="false" edit="false" delete="false">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="dispatch_timestamp" readonly="1"/>
+                                <field name="template_id" readonly="1"/>
+                                <field name="channel_type" readonly="1"/>
+                                <field name="status" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="gateway_config_id" readonly="1"/>
+                                <field name="related_record_model" readonly="1"/>
+                                <field name="related_record_id" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Recipient Information">
+                             <field name="recipient_partner_id" readonly="1"/>
+                             <field name="recipient_email" readonly="1"/>
+                             <field name="recipient_phone" readonly="1"/>
+                        </group>
+                        <group string="Message Content &amp; Status">
+                            <field name="subject" readonly="1"/>
+                            <field name="body_preview" readonly="1"/>
+                            <field name="error_message" readonly="1" attrs="{'invisible': [('status', '!=', 'failed')]}"/>
+                            <field name="message_id_external" readonly="1" />
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- dfr.notification.log Search View -->
+        <record id="view_dfr_notification_log_search" model="ir.ui.view">
+            <field name="name">dfr.notification.log.search</field>
+            <field name="model">dfr.notification.log</field>
+            <field name="arch" type="xml">
+                <search string="Search Notification Logs">
+                    <field name="recipient_email" string="Recipient Email"/>
+                    <field name="recipient_phone" string="Recipient Phone"/>
+                    <field name="recipient_partner_id" string="Recipient Partner"/>
+                    <field name="template_id"/>
+                    <field name="gateway_config_id"/>
+                    <field name="status"/>
+                    <field name="channel_type"/>
+                    <field name="subject"/>
+                    <field name="related_record_model"/>
+                    <field name="related_record_id"/>
+                    <filter string="Failed" name="status_failed" domain="[('status', '=', 'failed')]"/>
+                    <filter string="Sent" name="status_sent" domain="[('status', '=', 'sent')]"/>
+                    <filter string="Pending" name="status_pending" domain="[('status', '=', 'pending')]"/>
+                    <separator/>
+                    <filter string="Email" name="channel_email" domain="[('channel_type', '=', 'email')]"/>
+                    <filter string="SMS" name="channel_sms" domain="[('channel_type', '=', 'sms')]"/>
+                    <filter string="Push" name="channel_push" domain="[('channel_type', '=', 'push')]"/>
+                    <separator/>
+                    <filter string="Today" name="dispatch_today" domain="[('dispatch_timestamp', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')), ('dispatch_timestamp', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                    <filter string="This Week" name="dispatch_this_week" domain="[('dispatch_timestamp', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d 00:00:00')), ('dispatch_timestamp', '&lt;=', (context_today() + datetime.timedelta(days=6-context_today().weekday())).strftime('%Y-%m-%d 23:59:59'))]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Status" name="group_by_status" context="{'group_by': 'status'}"/>
+                        <filter string="Channel Type" name="group_by_channel_type" context="{'group_by': 'channel_type'}"/>
+                        <filter string="Template" name="group_by_template" context="{'group_by': 'template_id'}"/>
+                        <filter string="Gateway" name="group_by_gateway" context="{'group_by': 'gateway_config_id'}"/>
+                        <filter string="Dispatch Date" name="group_by_dispatch_date" context="{'group_by': 'dispatch_timestamp:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- dfr.notification.log Action Window -->
+        <record id="action_dfr_notification_log" model="ir.actions.act_window">
+            <field name="name">Dispatch Logs</field>
+            <field name="res_model">dfr.notification.log</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'tree', 'view_id': ref('view_dfr_notification_log_tree')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('view_dfr_notification_log_form')})]"/>
+            <field name="search_view_id" ref="view_dfr_notification_log_search"/>
+            <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_empty_folder">
+                    No notification logs found.
+                </p><p>
+                    This log records all notification dispatch attempts,
+                    their status, and any errors encountered.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

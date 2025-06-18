@@ -1,0 +1,23 @@
+groups:
+- name: postgres_database_alerts
+  rules:
+  - alert: PostgresTooManyConnections
+    expr: pg_stat_activity_count{datname!~"template.*|postgres"} > (pg_settings_max_connections * 0.8)
+    for: 5m
+    labels:
+      severity: warning
+      service: postgresql
+    annotations:
+      summary: "High PostgreSQL connection count on {{ $labels.instance }}"
+      description: "PostgreSQL instance {{ $labels.instance }} has {{ $value }} active connections, nearing max_connections."
+  - alert: PostgresReplicationLagHigh
+    expr: pg_replication_lag > 300 # Lag in seconds (5 minutes)
+    for: 10m
+    labels:
+      severity: critical
+      service: postgresql
+    annotations:
+      summary: "High PostgreSQL replication lag on {{ $labels.instance }}"
+      description: "PostgreSQL replication lag is {{ $value }}s on instance {{ $labels.instance }}."
+  # Add alerts for slow queries if metrics are available from exporter
+  # Add alerts for low disk space on PG data directory (covered by general_system_alerts if on same mount)

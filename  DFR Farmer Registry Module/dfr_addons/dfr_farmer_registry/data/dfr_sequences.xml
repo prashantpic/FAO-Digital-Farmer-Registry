@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Note: UID fields (dfr.farmer.uid, dfr.household.uid) are primarily generated
+            using Python's uuid.uuid4().hex as per SDS preference.
+            These sequences are included as specified in the SDS (Section 6.1)
+            and can serve as fallbacks, for other sequential numbering needs within the module,
+            or if a human-readable sequential ID is desired alongside the UUID.
+            They are not strictly used by the default UID generation logic in the models.
+        -->
+        <record id="seq_dfr_farmer_uid_reference" model="ir.sequence">
+            <field name="name">DFR Farmer UID Reference</field>
+            <field name="code">dfr.farmer.uid.sequence</field> <!-- As per SDS -->
+            <field name="prefix">FARM-</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/> <!-- Shared sequence across companies -->
+            <field name="implementation">standard</field>
+        </record>
+
+        <record id="seq_dfr_household_uid_reference" model="ir.sequence">
+            <field name="name">DFR Household UID Reference</field>
+            <field name="code">dfr.household.uid.sequence</field> <!-- As per SDS -->
+            <field name="prefix">HOU-</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/> <!-- Shared sequence -->
+            <field name="implementation">standard</field>
+        </record>
+    </data>
+</odoo>

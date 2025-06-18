@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1"> <!-- noupdate="1" so these are not overwritten on module update unless explicitly changed -->
+        <record id="config_farmer_activation_sms_template" model="orchestration.rule.config">
+            <field name="name">Farmer Activation SMS Template ID</field>
+            <field name="workflow_key">farmer_status_change</field>
+            <field name="parameter_key">active_status_sms_template_id</field>
+            <field name="parameter_value"></field> <!-- Leave empty or set a placeholder default ID if one exists from dfr_notifications_engine demo data -->
+            <field name="description">Odoo Mail Template ID (dfr.notification.template or mail.template) for SMS sent upon farmer activation.</field>
+            <field name="is_active">True</field>
+        </record>
+
+        <record id="config_farmer_activation_notification_template" model="orchestration.rule.config">
+            <field name="name">Farmer Activation Notification Template ID (Generic)</field>
+            <field name="workflow_key">farmer_status_change</field>
+            <field name="parameter_key">active_status_notification_template_id</field>
+            <field name="parameter_value"></field> <!-- Leave empty or set a placeholder -->
+            <field name="description">Generic Notification Template ID (e.g., from dfr_notifications_engine) for farmer activation.</field>
+            <field name="is_active">True</field>
+        </record>
+
+        <record id="config_farmer_deactivation_notification_template" model="orchestration.rule.config">
+            <field name="name">Farmer Deactivation Notification Template ID</field>
+            <field name="workflow_key">farmer_status_change</field>
+            <field name="parameter_key">inactive_status_notification_template_id</field>
+            <field name="parameter_value"></field> <!-- Leave empty or set a placeholder -->
+            <field name="description">Notification Template ID for farmer deactivation confirmation (if policy dictates sending this).</field>
+            <field name="is_active">True</field>
+        </record>
+
+        <record id="config_portal_review_assignee_group" model="orchestration.rule.config">
+            <field name="name">Portal Submission Review Assignee Group</field>
+            <field name="workflow_key">portal_submission</field>
+            <field name="parameter_key">review_assignee_group_id</field>
+            <!-- Ensure dfr_farmer_registry.group_dfr_supervisor exists or use a more generic group like base.group_user for fallback -->
+            <field name="parameter_value" model="res.groups" eval="ref('dfr_farmer_registry.group_dfr_supervisor', False) or ref('base.group_user', False)"/>
+            <field name="description">Group ID (res.groups) to whom portal submissions are assigned for review via an activity.</field>
+            <field name="is_active">True</field>
+        </record>
+        
+        <record id="config_stale_pending_verification_days" model="orchestration.rule.config">
+            <field name="name">Stale Pending Verification Threshold (Days)</field>
+            <field name="workflow_key">data_quality</field>
+            <field name="parameter_key">stale_pending_verification_days</field>
+            <field name="parameter_value">7</field>
+            <field name="description">Number of days after which a 'Pending Verification' record is considered stale and an alert is triggered.</field>
+            <field name="is_active">True</field>
+        </record>
+
+        <record id="config_farmer_reg_success_sms_template" model="orchestration.rule.config">
+            <field name="name">Farmer Registration Success SMS Template ID</field>
+            <field name="workflow_key">farmer_registration</field>
+            <field name="parameter_key">success_farmer_sms_template_id</field>
+            <field name="parameter_value"></field>
+            <field name="description">Template ID for SMS sent to farmer upon successful registration and activation.</field>
+            <field name="is_active">True</field>
+        </record>
+
+        <record id="config_portal_submission_received_template" model="orchestration.rule.config">
+            <field name="name">Portal Submission Received Notification Template ID</field>
+            <field name="workflow_key">portal_submission</field>
+            <field name="parameter_key">submission_received_notification_template_id</field>
+            <field name="parameter_value"></field>
+            <field name="description">Template ID for notification sent to farmer confirming their portal submission has been received.</field>
+            <field name="is_active">True</field>
+        </record>
+
+    </data>
+</odoo>

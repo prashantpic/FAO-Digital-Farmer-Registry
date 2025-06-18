@@ -1,0 +1,99 @@
+.o_form_builder_widget {
+    .form-fields-list {
+        .form-field-item {
+            padding: 0.65rem 1rem; // Slightly smaller padding
+            cursor: default;
+            border-bottom: 1px solid #dee2e6;
+
+            &:last-child {
+                border-bottom: none;
+            }
+
+            .drag-handle {
+                cursor: grab;
+                opacity: 0.4;
+                transition: opacity 0.2s ease-in-out;
+                font-size: 1.1em; // Make drag handle a bit more prominent
+                 margin-right: 0.75rem !important; // Ensure spacing
+            }
+
+            &:hover {
+                background-color: #f8f9fa; // Light hover effect
+                .drag-handle {
+                    opacity: 1;
+                }
+            }
+
+            &.dragging {
+                opacity: 0.6;
+                background-color: #e9ecef;
+                border: 1px dashed #adb5bd;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+             &.drag-over {
+                // border-top: 2px solid var(--o-primary-text);
+                background-color: #e9f5ff; // A light blueish highlight
+            }
+
+            .field-label {
+                font-size: 1em;
+            }
+            .field-name {
+                font-size: 0.85em;
+            }
+            .badge {
+                font-size: 0.75em;
+                vertical-align: middle;
+            }
+            .field-actions .btn {
+                padding: 0.2rem 0.4rem; // Smaller buttons
+                font-size: 0.8rem;
+            }
+        }
+    }
+}
+
+// For FieldPropertiesModal, using o_dialog classes for consistency
+.o_dialog .o_field_properties_modal {
+    .modal-body {
+        // Odoo's default modal padding is usually sufficient
+    }
+    .nav-tabs .nav-link {
+        cursor: pointer;
+        font-size: 0.9em;
+        padding: 0.5rem 0.8rem;
+    }
+
+    .tab-content {
+        .form-label {
+            font-size: 0.875em; // Slightly smaller labels in modal
+            font-weight: 500;
+        }
+        .form-text {
+            font-size: 0.8em;
+        }
+        .form-control, .form-select {
+             font-size: 0.9em; // Slightly smaller inputs
+        }
+    }
+    
+    .conditional-logic-list {
+        .list-group-item {
+            font-size: 0.85em;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+    .card-title.fs-6 { // Ensure fs-6 takes precedence if Bootstrap is loaded later with higher specificity
+        font-size: 1rem !important; 
+        margin-bottom: 0.75rem;
+    }
+
+    .font-monospace {
+        font-size: 0.8em !important; // Smaller for raw JSON text area
+    }
+}
+
+// Ensure FontAwesome icons are vertically aligned if not already
+.o_form_builder_widget .fa, .o_field_properties_modal .fa {
+    vertical-align: middle;
+}

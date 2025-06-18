@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Farmer KYC Review Wizard Views -->
+
+    <!-- Form View -->
+    <record id="dfr_farmer_kyc_wizard_form" model="ir.ui.view">
+        <field name="name">dfr.farmer.kyc.wizard.form</field>
+        <field name="model">dfr.farmer.kyc.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Process Farmer KYC Review">
+                <group>
+                    <group>
+                        <field name="farmer_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="current_kyc_status" readonly="1"/>
+                        <label for="national_id_display" string="National ID"/>
+                        <div>
+                             <field name="national_id_display" readonly="1" class="oe_inline"/>
+                             (<field name="farmer_id" widget="related" related_field="national_id_type_id" class="oe_inline" readonly="1" nolabel="1"/>)
+                        </div>
+                    </group>
+                    <group>
+                        <field name="verification_outcome" widget="radio" required="1"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="review_notes" placeholder="Enter notes regarding the KYC verification decision..."/>
+                </group>
+                 <group string="Farmer Documents (Read-Only)" name="farmer_attachments" attrs="{'invisible': [('attachment_ids', '=', [])]}">
+                     <field name="attachment_ids" widget="many2many_binary" readonly="1" nolabel="1"/>
+                     <!--
+                        A more robust way to show farmer's KYC relevant attachments would be a computed field
+                        on the wizard that specifically queries attachments tagged for KYC or attached to KYC related messages.
+                        For simplicity, 'attachment_ids' on wizard is assumed to be populated by default_get if relevant.
+                     -->
+                 </group>
+                <footer>
+                    <button name="action_submit_kyc_review" type="object" string="Submit Review" class="btn-primary"
+                            confirm="You are about to submit the KYC review with the selected outcome. This action will update the farmer's KYC status and will be logged. Continue?"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Window Action for the wizard -->
+     <record id="action_dfr_farmer_kyc_wizard" model="ir.actions.act_window">
+        <field name="name">Process KYC Review</field>
+        <field name="res_model">dfr.farmer.kyc.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_dfr_farmer"/> <!-- Bind to dfr.farmer model -->
+        <field name="binding_views">form,list</field> <!-- Available from form and list views -->
+        <field name="context">{'default_farmer_id': active_id}</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="swagger_ui_template" name="DFR API Swagger UI">
+        <html lang="en">
+            <head>
+                <meta charset="UTF-8"/>
+                <title>DFR API Documentation</title>
+                <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"/>
+                <link rel="icon" type="image/png" href="https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png"/>
+                <style>
+                    html {
+                        box-sizing: border-box;
+                        overflow: -moz-scrollbars-vertical;
+                        overflow-y: scroll;
+                    }
+                    *,
+                    *:before,
+                    *:after {
+                        box-sizing: inherit;
+                    }
+                    body {
+                        margin: 0;
+                        background: #fafafa;
+                    }
+                </style>
+            </head>
+            <body>
+                <div id="swagger-ui"></div>
+                <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" charset="UTF-8"></script>
+                <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
+                <script t-attf-text="true">
+                    window.onload = function() {
+                      // Begin Swagger UI call region
+                      const ui = SwaggerUIBundle({
+                        url: &quot;${openapi_spec_url}&quot;, // URL passed from controller
+                        dom_id: '#swagger-ui',
+                        deepLinking: true,
+                        presets: [
+                          SwaggerUIBundle.presets.apis,
+                          SwaggerUIStandalonePreset
+                        ],
+                        plugins: [
+                          SwaggerUIBundle.plugins.DownloadUrl
+                        ],
+                        layout: &quot;StandaloneLayout&quot;,
+                        // Optional: Add requestInterceptor to inject Bearer token for "Try it out"
+                        // requestInterceptor: (req) => {
+                        //   const token = localStorage.getItem('dfr_api_access_token'); // Or get from a more secure place
+                        //   if (token &amp;&amp; req.loadSpec &amp;&amp; req.loadSpec.isOpenAPIv3()) {
+                        //      // Check if security scheme 'bearerAuth' is applied to the operation
+                        //      let isBearerAuth = false;
+                        //      if(req.spec.paths[req.url.substring(req.url.indexOf('/api/dfr/v1'))] &amp;&amp;
+                        //         req.spec.paths[req.url.substring(req.url.indexOf('/api/dfr/v1'))][req.method.toLowerCase()] &amp;&amp;
+                        //         req.spec.paths[req.url.substring(req.url.indexOf('/api/dfr/v1'))][req.method.toLowerCase()].security){
+                        //             req.spec.paths[req.url.substring(req.url.indexOf('/api/dfr/v1'))][req.method.toLowerCase()].security.forEach(sec => {
+                        //                 if(sec.bearerAuth !== undefined) isBearerAuth = true;
+                        //             });
+                        //      }
+                        //      if (isBearerAuth) {
+                        //        req.headers['Authorization'] = 'Bearer ' + token;
+                        //      }
+                        //   }
+                        //   return req;
+                        // },
+                        // Optional: Enable persistAuthorization to remember token across page reloads
+                        // persistAuthorization: true 
+                      });
+                      // End Swagger UI call region
+                      window.ui = ui;
+                    };
+                </script>
+            </body>
+        </html>
+    </template>
+</odoo>

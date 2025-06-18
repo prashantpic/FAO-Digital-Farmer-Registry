@@ -1,0 +1,153 @@
+<odoo>
+    <data>
+        <!-- Farmer Pre-registration Form Template -->
+        <template id="portal_preregistration_form_template" name="Farmer Pre-registration Form" inherit_id="dfr_farmer_portal.portal_layout">
+            <xpath expr="//t[@t-call-block='main_content_placeholder']" position="replace">
+                <div id="wrap" class="container my-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10">
+                            <h1 class="mb-4 text-center">Farmer Pre-registration</h1>
+
+                            <t t-if="general_error">
+                                <div class="alert alert-danger" role="alert">
+                                    <t t-esc="general_error"/>
+                                </div>
+                            </t>
+
+                            <form role="form" id="preregistration_form" action="/farmer/register" method="POST" class="needs-validation" novalidate="novalidate">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                <!-- Full Name -->
+                                <div class="mb-3">
+                                    <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="full_name" name="full_name"
+                                           t-att-value="values.get('full_name')"
+                                           required="required"
+                                           aria-required="true"
+                                           t-att-aria-invalid="errors.get('full_name') and 'true' or None"
+                                           t-att-aria-describedby="errors.get('full_name') and 'error_full_name' or None"/>
+                                    <div t-if="errors.get('full_name')" id="error_full_name" class="alert alert-danger mt-1 p-2" role="alert">
+                                        <small><t t-esc="errors.get('full_name')"/></small>
+                                    </div>
+                                </div>
+
+                                <!-- Village -->
+                                <div class="mb-3">
+                                    <label for="village" class="form-label">Village <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="village" name="village"
+                                            required="required"
+                                            aria-required="true"
+                                            t-att-aria-invalid="errors.get('village') and 'true' or None"
+                                            t-att-aria-describedby="errors.get('village') and 'error_village' or None">
+                                        <option value="">Select Village...</option>
+                                        <t t-foreach="villages or []" t-as="v">
+                                            <option t-att-value="v.id" t-att-selected="v.id == values.get('village')">
+                                                <t t-esc="v.name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                    <div t-if="errors.get('village')" id="error_village" class="alert alert-danger mt-1 p-2" role="alert">
+                                        <small><t t-esc="errors.get('village')"/></small>
+                                    </div>
+                                </div>
+
+                                <!-- Primary Crop Type -->
+                                <div class="mb-3">
+                                    <label for="primary_crop_type" class="form-label">Primary Crop Type <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="primary_crop_type" name="primary_crop_type"
+                                           t-att-value="values.get('primary_crop_type')"
+                                           required="required"
+                                           aria-required="true"
+                                           t-att-aria-invalid="errors.get('primary_crop_type') and 'true' or None"
+                                           t-att-aria-describedby="errors.get('primary_crop_type') and 'error_primary_crop_type' or None"/>
+                                    <div t-if="errors.get('primary_crop_type')" id="error_primary_crop_type" class="alert alert-danger mt-1 p-2" role="alert">
+                                        <small><t t-esc="errors.get('primary_crop_type')"/></small>
+                                    </div>
+                                </div>
+
+                                <!-- Contact Number -->
+                                <div class="mb-3">
+                                    <label for="contact_number" class="form-label">Contact Number <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="contact_number" name="contact_number"
+                                           t-att-value="values.get('contact_number')"
+                                           required="required"
+                                           aria-required="true"
+                                           t-att-aria-invalid="errors.get('contact_number') and 'true' or None"
+                                           t-att-aria-describedby="errors.get('contact_number') and 'error_contact_number' or None"/>
+                                    <div t-if="errors.get('contact_number')" id="error_contact_number" class="alert alert-danger mt-1 p-2" role="alert">
+                                        <small><t t-esc="errors.get('contact_number')"/></small>
+                                    </div>
+                                </div>
+
+                                <!-- National ID Type -->
+                                <div class="mb-3">
+                                    <label for="national_id_type" class="form-label">National ID Type</label>
+                                    <select class="form-select" id="national_id_type" name="national_id_type"
+                                            t-att-aria-invalid="errors.get('national_id_type') and 'true' or None"
+                                            t-att-aria-describedby="errors.get('national_id_type') and 'error_national_id_type' or None">
+                                        <option value="">Select ID Type (Optional)...</option>
+                                         <t t-foreach="national_id_types or []" t-as="id_type">
+                                            <option t-att-value="id_type.id" t-att-selected="id_type.id == values.get('national_id_type')">
+                                                <t t-esc="id_type.name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                     <div t-if="errors.get('national_id_type')" id="error_national_id_type" class="alert alert-danger mt-1 p-2" role="alert">
+                                        <small><t t-esc="errors.get('national_id_type')"/></small>
+                                    </div>
+                                </div>
+
+                                <!-- National ID Number (conditionally displayed) -->
+                                <div class="mb-3 d-none" id="national_id_number_group">
+                                    <label for="national_id_number" class="form-label">National ID Number</label>
+                                    <input type="text" class="form-control" id="national_id_number" name="national_id_number"
+                                           t-att-value="values.get('national_id_number')"
+                                           t-att-aria-invalid="errors.get('national_id_number') and 'true' or None"
+                                           t-att-aria-describedby="errors.get('national_id_number') and 'error_national_id_number' or None"/>
+                                    <div t-if="errors.get('national_id_number')" id="error_national_id_number" class="alert alert-danger mt-1 p-2" role="alert">
+                                        <small><t t-esc="errors.get('national_id_number')"/></small>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">Submit Pre-registration</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </template>
+
+        <!-- Farmer Pre-registration Confirmation Template -->
+        <template id="portal_preregistration_confirmation_template" name="Farmer Pre-registration Confirmation" inherit_id="dfr_farmer_portal.portal_layout">
+            <xpath expr="//t[@t-call-block='main_content_placeholder']" position="replace">
+                <div id="wrap" class="container my-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10 text-center">
+                            <div class="card shadow-sm">
+                                <div class="card-body p-5">
+                                    <i class="fa fa-check-circle fa-5x text-success mb-4"></i>
+                                    <h1 class="card-title h3">Pre-registration Submitted!</h1>
+                                    <p class="card-text fs-5 text-muted">
+                                        Thank you for submitting your pre-registration details.
+                                    </p>
+                                    <p class="card-text text-muted" t-if="message">
+                                        <t t-esc="message"/>
+                                    </p>
+                                    <p class="card-text text-muted">
+                                        Your information has been received and will be processed. You may be contacted if further details are required.
+                                    </p>
+                                    <div class="mt-4">
+                                        <a href="/dfr/info" class="btn btn-outline-secondary me-2">Learn more about DFR</a>
+                                        <a href="/" class="btn btn-primary">Back to Home</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </template>
+    </data>
+</odoo>

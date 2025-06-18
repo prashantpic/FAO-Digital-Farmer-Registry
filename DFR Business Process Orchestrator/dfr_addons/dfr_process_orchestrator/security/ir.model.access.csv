@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_orchestration_rule_config_system,orchestration.rule.config.system,model_orchestration_rule_config,base.group_system,1,1,1,1
+access_orchestration_rule_config_dfr_workflow_admin,orchestration.rule.config.dfr.workflow.admin,model_orchestration_rule_config,dfr_process_orchestrator.group_dfr_workflow_administrator,1,1,1,1
+
+access_workflow_log_system,workflow.log.system,model_workflow_log,base.group_system,1,0,0,0
+access_workflow_log_user,workflow.log.user,model_workflow_log,base.group_user,1,0,0,0
+access_workflow_log_dfr_workflow_admin,workflow.log.dfr.workflow.admin,model_workflow_log,dfr_process_orchestrator.group_dfr_workflow_administrator,1,0,0,0
+
+access_manual_workflow_step_wizard_system,manual.workflow.step.wizard.system,model_manual_workflow_step_wizard,base.group_system,1,1,1,1
+access_manual_workflow_step_wizard_dfr_workflow_admin,manual.workflow.step.wizard.dfr.workflow.admin,model_manual_workflow_step_wizard,dfr_process_orchestrator.group_dfr_workflow_administrator,1,1,1,1

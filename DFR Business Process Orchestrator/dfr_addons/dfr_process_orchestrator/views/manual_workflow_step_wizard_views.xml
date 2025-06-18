@@ -1,0 +1,49 @@
+<odoo>
+    <data>
+        <record id="view_manual_workflow_step_wizard_form" model="ir.ui.view">
+            <field name="name">manual.workflow.step.wizard.form</field>
+            <field name="model">manual.workflow.step.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Manual Workflow Step Execution">
+                    <group>
+                        <field name="workflow_type"/>
+                        <!-- Option 1: Select by Model + ID, record_ref will be populated by onchange in python model -->
+                        <field name="record_ref_model"
+                               attrs="{'invisible': [('workflow_type', '=', False)], 'required': [('workflow_type', '!=', False)]}"
+                               placeholder="e.g., dfr.farmer"/>
+                        <field name="record_ref_id"
+                               attrs="{'invisible': [('workflow_type', '=', False), ('record_ref_model', '=', False)], 'required': [('workflow_type', '!=', False),('record_ref_model', '!=', False)]}"/>
+                        <!-- The record_ref field itself can be made invisible if it's purely populated by an onchange based on model/id -->
+                        <!-- Or it can be the primary selector if _selection_target_model_wizard is robust and model/id are derived -->
+                        <!-- Following SDS 4.9.3 snippet which comments out direct record_ref input -->
+                        <!-- If record_ref needs to be directly selected:
+                        <field name="record_ref"
+                               options="{'no_create': True, 'no_open': True}"
+                               attrs="{'invisible': [('workflow_type', '=', False)], 'required': [('workflow_type', '!=', False)]}"/>
+                        -->
+                    </group>
+                    <group>
+                        <field name="target_step_action_id"
+                               domain="[('model_id.model', '=', record_ref_model)]"
+                               options="{'no_create': True, 'no_open': True}"
+                               attrs="{'invisible': ['|', ('workflow_type', '=', False), '|', ('record_ref_model', '=', False), ('record_ref_id', '=', False)], 'required': [('workflow_type', '!=', False),('record_ref_model', '!=', False), ('record_ref_id', '!=', False)]}"/>
+                    </group>
+                    <group>
+                        <field name="reason" widget="text" required="1"/>
+                    </group>
+                    <footer>
+                        <button name="action_execute_manual_step" string="Execute Step" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_manual_workflow_step_wizard" model="ir.actions.act_window">
+            <field name="name">Manual Workflow Step</field>
+            <field name="res_model">manual.workflow.step.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

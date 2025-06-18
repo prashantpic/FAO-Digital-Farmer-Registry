@@ -1,0 +1,70 @@
+sequenceDiagram
+    actor "Admin User (Browser)" as AdminUserBrowser
+    participant "Reverse Proxy (Nginx)" as dfrinfrareverseproxy021
+    participant "Odoo App Server" as dfrinfraodoappcontainer019
+    participant "RBAC Data Store" as dfrmodulerbacconfig004
+    participant "Audit Log Service" as dfrmodulesecurityauditlog013
+
+    AdminUserBrowser-dfrinfrareverseproxy021: 1. GET /web/login (Navigate to Login Page)
+    activate dfrinfrareverseproxy021
+    dfrinfrareverseproxy021-dfrinfraodoappcontainer019: 1.1 Forward: GET /web/login
+    activate dfrinfraodoappcontainer019
+    dfrinfraodoappcontainer019--dfrinfrareverseproxy021: 1.2 HTTP 200 OK (Login Page HTML)
+    deactivate dfrinfraodoappcontainer019
+    dfrinfrareverseproxy021--AdminUserBrowser: 1.3 Return Login Page
+    deactivate dfrinfrareverseproxy021
+
+    AdminUserBrowser-dfrinfrareverseproxy021: 2. POST /web/login (Submit Username & Password)
+    activate dfrinfrareverseproxy021
+    dfrinfrareverseproxy021-dfrinfraodoappcontainer019: 2.1 Forward: POST /web/login (credentials)
+    activate dfrinfraodoappcontainer019
+    dfrinfraodoappcontainer019-dfrmodulerbacconfig004: 2.1.1 Query User Details & Auth Policy (username)
+    activate dfrmodulerbacconfig004
+    note over dfrmodulerbacconfig004: User credentials (username, password hash, MFA settings, roles) are stored within Odoo's PostgreSQL database. dfr-module-rbac-config-004 defines the structure and policies for this data.
+    dfrmodulerbacconfig004--dfrinfraodoappcontainer019: 2.1.2 Return User Details (hashedpassword, mfaenabledflag, roles)
+    deactivate dfrmodulerbacconfig004
+    dfrinfraodoappcontainer019-dfrinfraodoappcontainer019: 2.1.3 [Internal] Validate Credentials (password vs hashedpassword)
+
+    alt 3.1 Credentials Valid
+        dfrinfraodoappcontainer019-dfrinfraodoappcontainer019: 3.1.1 [Internal] Check if MFA enabled for user
+        alt 3.2.1 MFA Enabled
+            note right of dfrinfraodoappcontainer019: Multi-Factor Authentication (MFA) can be based on TOTP (Time-based One-Time Password) or other methods configured in Odoo.
+            dfrinfraodoappcontainer019--dfrinfrareverseproxy021: 3.2.1.1 HTTP Response (Prompt for MFA Code)
+            dfrinfrareverseproxy021--AdminUserBrowser: 3.2.1.2 Display MFA Prompt
+            AdminUserBrowser-dfrinfrareverseproxy021: 3.2.1.3 POST /web/login/mfa (Submit MFA Code)
+            dfrinfrareverseproxy021-dfrinfraodoappcontainer019: 3.2.1.4 Forward: POST /web/login/mfa (MFA code)
+            dfrinfraodoappcontainer019-dfrinfraodoappcontainer019: 3.2.1.4.1 [Internal] Validate MFA Code
+            alt 3.3.1 MFA Code Valid
+                dfrinfraodoappcontainer019-dfrinfraodoappcontainer019: 3.3.1.1 [Internal] Create Session
+                note over dfrinfraodoappcontainer019: Session management (creation, cookie setting) is handled by Odoo's standard mechanisms.
+                dfrinfraodoappcontainer019-dfrmodulesecurityauditlog013: 3.3.1.2 LogLoginAttempt(username, status='SUCCESS', mfastatus='VERIFIED')
+                activate dfrmodulesecurityauditlog013
+                note over dfrmodulesecurityauditlog013: Audit log includes details like IP address (anonymized if needed), timestamp, user agent, etc. as per REQ-SADG-005.
+                dfrmodulesecurityauditlog013--dfrinfraodoappcontainer019: 3.3.1.3 Log Acknowledged
+                deactivate dfrmodulesecurityauditlog013
+                dfrinfraodoappcontainer019--dfrinfrareverseproxy021: 3.3.1.4 HTTP 302 Redirect (to Dashboard, Set Session Cookie)
+            else 3.3.2 MFA Code Invalid
+                dfrinfraodoappcontainer019-dfrmodulesecurityauditlog013: 3.3.2.1 LogLoginAttempt(username, status='FAILURE', reason='MFAINVALID')
+                activate dfrmodulesecurityauditlog013
+                dfrmodulesecurityauditlog013--dfrinfraodoappcontainer019: 3.3.2.2 Log Acknowledged
+                deactivate dfrmodulesecurityauditlog013
+                dfrinfraodoappcontainer019--dfrinfrareverseproxy021: 3.3.2.3 HTTP Response (Error: Invalid MFA Code)
+            end
+        else 3.2.2 MFA Not Enabled
+            dfrinfraodoappcontainer019-dfrinfraodoappcontainer019: 3.2.2.1 [Internal] Create Session
+            dfrinfraodoappcontainer019-dfrmodulesecurityauditlog013: 3.2.2.2 LogLoginAttempt(username, status='SUCCESS', mfastatus='NOTENABLED')
+            activate dfrmodulesecurityauditlog013
+            dfrmodulesecurityauditlog013--dfrinfraodoappcontainer019: 3.2.2.3 Log Acknowledged
+            deactivate dfrmodulesecurityauditlog013
+            dfrinfraodoappcontainer019--dfrinfrareverseproxy021: 3.2.2.4 HTTP 302 Redirect (to Dashboard, Set Session Cookie)
+        end
+    else 3.4 Credentials Invalid
+        dfrinfraodoappcontainer019-dfrmodulesecurityauditlog013: 3.4.1 LogLoginAttempt(username, status='FAILURE', reason='INVALID_CREDENTIALS')
+        activate dfrmodulesecurityauditlog013
+        dfrmodulesecurityauditlog013--dfrinfraodoappcontainer019: 3.4.2 Log Acknowledged
+        deactivate dfrmodulesecurityauditlog013
+        dfrinfraodoappcontainer019--dfrinfrareverseproxy021: 3.4.3 HTTP Response (Error: Invalid Username or Password)
+    end
+    deactivate dfrinfraodoappcontainer019
+    dfrinfrareverseproxy021--AdminUserBrowser: 4. Return Final HTTP Response (Success/Redirect or Error)
+    deactivate dfrinfrareverseproxy021

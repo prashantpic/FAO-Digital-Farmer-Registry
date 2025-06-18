@@ -1,0 +1,87 @@
+sequenceDiagram
+    actor "API Client (e.g., DFR Mobile App, External System)" as apiClient
+    participant "API Service Module (Odoo)" as dfrApiServiceModule
+    participant "Odoo Security Framework Configuration (OAuth2 Provider part)" as odooOauthProviderConfig
+    participant "PostgreSQL Database" as dfrPostgresqlDb
+
+    apiClient-dfrApiServiceModule: 1. Request Access Token (POST /oauth/token)
+    activate dfrApiServiceModule
+
+    dfrApiServiceModule-odooOauthProviderConfig: 1.1. Validate Credentials (Client & User)
+    activate odooOauthProviderConfig
+    odooOauthProviderConfig-dfrPostgresqlDb: 1.1.1. Query User/Client details for validation
+    activate dfrPostgresqlDb
+    dfrPostgresqlDb--odooOauthProviderConfig: User/Client details (or not found)
+    deactivate dfrPostgresqlDb
+    odooOauthProviderConfig-odooOauthProviderConfig: 1.1.2. [Internal] Verify credentials (password hash, client secret)
+    odooOauthProviderConfig--dfrApiServiceModule: 1.2. Return Validation Result
+    deactivate odooOauthProviderConfig
+
+    alt IF Validation Fails
+        dfrApiServiceModule-dfrPostgresqlDb: 1.3.1. Log failed authentication attempt
+        activate dfrPostgresqlDb
+        dfrPostgresqlDb--dfrApiServiceModule: Log Confirmation
+        deactivate dfrPostgresqlDb
+        dfrApiServiceModule--apiClient: 1.3.2. Return Error Response (e.g., HTTP 400/401)
+    else IF Validation Success
+        dfrApiServiceModule-odooOauthProviderConfig: 1.4.1. Request Token Generation Parameters (Claims, Expiry)
+        activate odooOauthProviderConfig
+        odooOauthProviderConfig-dfrPostgresqlDb: 1.4.1.1. Query user roles/permissions for claims
+        activate dfrPostgresqlDb
+        dfrPostgresqlDb--odooOauthProviderConfig: User roles/permissions
+        deactivate dfrPostgresqlDb
+        odooOauthProviderConfig--dfrApiServiceModule: 1.4.2. Return Token Generation Parameters
+        deactivate odooOauthProviderConfig
+        dfrApiServiceModule-dfrApiServiceModule: 1.4.3. [Internal] Generate and Sign JWT Access Token
+        dfrApiServiceModule-dfrPostgresqlDb: 1.4.4. [Optional] Log token issuance / Record refresh token
+        activate dfrPostgresqlDb
+        dfrPostgresqlDb--dfrApiServiceModule: Log/Record Confirmation
+        deactivate dfrPostgresqlDb
+        dfrApiServiceModule--apiClient: 1.4.5. Return Access Token Response (HTTP 200 OK)
+    end
+    deactivate dfrApiServiceModule
+
+    activate apiClient
+    apiClient-apiClient: 2. Store Access Token (JWT)
+    deactivate apiClient
+
+    apiClient-dfrApiServiceModule: 3. Request Protected Resource (GET/POST /api/dfr/resource)
+    activate dfrApiServiceModule
+    dfrApiServiceModule-dfrApiServiceModule: 3.1. [Internal] Extract JWT from Authorization header
+    dfrApiServiceModule-odooOauthProviderConfig: 3.2. Validate JWT
+    activate odooOauthProviderConfig
+    odooOauthProviderConfig-odooOauthProviderConfig: 3.2.1. [Internal] Verify signature, expiry, claims
+    odooOauthProviderConfig-dfrPostgresqlDb: 3.2.1.1. [Optional] Fetch JWT signing key/config
+    activate dfrPostgresqlDb
+    dfrPostgresqlDb--odooOauthProviderConfig: Signing key/config
+    deactivate dfrPostgresqlDb
+    odooOauthProviderConfig--dfrApiServiceModule: 3.3. Return JWT Validation Result
+    deactivate odooOauthProviderConfig
+
+    alt IF JWT Invalid
+        dfrApiServiceModule--apiClient: 3.4.1. Return Error Response (HTTP 401 Unauthorized)
+    else IF JWT Valid
+        dfrApiServiceModule-odooOauthProviderConfig: 3.5.1. Perform RBAC Check
+        activate odooOauthProviderConfig
+        odooOauthProviderConfig-dfrPostgresqlDb: 3.5.1.1. Query access rules (ir.model.access, ir.rule)
+        activate dfrPostgresqlDb
+        dfrPostgresqlDb--odooOauthProviderConfig: Access rules
+        deactivate dfrPostgresqlDb
+        odooOauthProviderConfig--dfrApiServiceModule: 3.5.2. Return RBAC Result
+        deactivate odooOauthProviderConfig
+        alt IF RBAC Fails
+            dfrApiServiceModule--apiClient: 3.5.3.1. Return Error Response (HTTP 403 Forbidden)
+        else IF RBAC Pass
+            dfrApiServiceModule-dfrPostgresqlDb: 3.5.4.1. Query DFR Data for protected resource
+            activate dfrPostgresqlDb
+            dfrPostgresqlDb--dfrApiServiceModule: DFR Data
+            deactivate dfrPostgresqlDb
+            dfrApiServiceModule-dfrApiServiceModule: 3.5.4.2. [Internal] Process Request & Prepare Response
+            dfrApiServiceModule--apiClient: 3.5.4.3. Return API Response (HTTP 200 OK with data)
+        end
+    end
+    deactivate dfrApiServiceModule
+
+    note over apiClient, dfrPostgresqlDb: This diagram illustrates the Resource Owner Password Credentials Grant type for OAuth2. Client Credentials Grant is an alternative for server-to-server communication.
+    note over apiClient, dfrPostgresqlDb: Error responses (e.g., 400, 401, 403) are shown as separate conditional paths.
+    note over apiClient, dfrPostgresqlDb: The 'Odoo Security Framework Configuration (OAuth2 Provider part)' participant represents the logical component within Odoo responsible for OAuth policies, credential validation logic, token rules, and RBAC evaluation, interacting with the database as needed.

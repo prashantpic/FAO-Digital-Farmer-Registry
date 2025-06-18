@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- dfr.form Views -->
+    <record id="dfr_form_view_tree" model="ir.ui.view">
+        <field name="name">dfr.form.tree</field>
+        <field name="model">dfr.form</field>
+        <field name="arch" type="xml">
+            <tree string="Dynamic Forms">
+                <field name="name"/>
+                <field name="current_published_version_id"/>
+                <field name="country_id"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="dfr_form_view_form" model="ir.ui.view">
+        <field name="name">dfr.form.form</field>
+        <field name="model">dfr.form</field>
+        <field name="arch" type="xml">
+            <form string="Dynamic Form Master">
+                <header>
+                    <!-- Header buttons if any specific to master -->
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_versions"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-files-o"
+                            string="Versions">
+                        </button>
+                        <button name="action_create_new_version"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-plus-square-o"
+                            string="New Version">
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="e.g., Farmer Registration Form"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="country_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                             <field name="current_published_version_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description" placeholder="Detailed purpose of this form..."/>
+                        </page>
+                        <page string="Versions">
+                            <field name="form_version_ids" readonly="1">
+                                <tree>
+                                    <field name="version_number"/>
+                                    <field name="status"/>
+                                    <field name="publish_date"/>
+                                    <field name="submission_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="dfr_form_view_search" model="ir.ui.view">
+        <field name="name">dfr.form.search</field>
+        <field name="model">dfr.form</field>
+        <field name="arch" type="xml">
+            <search string="Search Dynamic Forms">
+                <field name="name"/>
+                <field name="country_id"/>
+                <filter string="Active" name="active" domain="[('active','=',True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active','=',False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Country" name="group_by_country" context="{'group_by':'country_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dfr_form_master_tree" model="ir.actions.act_window">
+        <field name="name">Dynamic Forms</field>
+        <field name="res_model">dfr.form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new dynamic form master.
+            </p><p>
+                Each form master can have multiple versions. You can design fields, set validation rules,
+                and manage the lifecycle of each version.
+            </p>
+        </field>
+    </record>
+
+    <!-- dfr.form.version Views -->
+    <record id="dfr_form_version_view_tree" model="ir.ui.view">
+        <field name="name">dfr.form.version.tree</field>
+        <field name="model">dfr.form.version</field>
+        <field name="arch" type="xml">
+            <tree string="Form Versions" decoration-info="status=='draft'" decoration-success="status=='published'" decoration-muted="status=='archived'">
+                <field name="name" string="Form Name"/> <!-- Related from master -->
+                <field name="version_number"/>
+                <field name="status"/>
+                <field name="publish_date"/>
+                <field name="submission_count" sum="Total Submissions"/>
+                <field name="is_editable" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="dfr_form_version_view_form" model="ir.ui.view">
+        <field name="name">dfr.form.version.form</field>
+        <field name="model">dfr.form.version</field>
+        <field name="arch" type="xml">
+            <form string="Form Version">
+                <header>
+                    <button name="action_publish" type="object" string="Publish"
+                            class="oe_highlight"
+                            attrs="{'invisible': ['|', ('can_be_published', '=', False), ('status', '!=', 'draft')]}"/>
+                    <button name="action_set_to_draft" type="object" string="Set to Draft"
+                            attrs="{'invisible': [('status', '!=', 'archived')]}"/>
+                    <button name="action_archive" type="object" string="Archive"
+                            attrs="{'invisible': ['|', ('can_be_archived', '=', False), ('status', 'not in', ('draft', 'published'))]}"/>
+                    <button name="copy" type="object" string="Copy Version (New Draft)"
+                            help="Create a new draft version based on this one."/>
+                    <field name="status" widget="statusbar" statusbar_visible="draft,published,archived"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                         <label for="name" class="oe_edit_only" string="Form Title"/>
+                         <h1><field name="name" readonly="1" options="{'no_open': True}"/></h1>
+                         <h2>Version: <field name="version_number" readonly="1"/></h2>
+                    </div>
+                     <group>
+                        <group>
+                           <field name="form_master_id" readonly="1" options="{'no_open': True}"/>
+                           <field name="is_editable" invisible="1"/> <!-- Control for editability -->
+                        </group>
+                        <group>
+                            <field name="publish_date" readonly="1"/>
+                            <field name="archive_date" readonly="1"/>
+                            <field name="submission_count" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Fields" name="page_fields">
+                            <field name="field_ids"
+                                   attrs="{'readonly': [('is_editable', '=', False)]}"
+                                   context="{'default_form_version_id': active_id}">
+                                <tree editable="bottom" string="Form Fields" default_order="sequence">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="label" required="1"/>
+                                    <field name="name" required="1" string="Technical Name"/>
+                                    <field name="field_type" required="1"/>
+                                    <field name="is_required" string="Required (UI)"/>
+                                    <!-- Button to open modal for more details -->
+                                    <button name="%(action_dfr_form_field_form_modal)d"
+                                            type="action" icon="fa-pencil-square-o" string="Edit Details"
+                                            context="{'default_form_version_id': parent.id, 'default_name': name, 'default_label': label, 'default_field_type': field_type, 'default_sequence': sequence, 'default_is_required': is_required, 'form_view_ref': 'dfr_dynamic_forms.dfr_form_field_view_form_modal'}"/>
+                                </tree>
+                                <!-- Form view for field_ids items (inline or modal) would be complex here without a custom widget.
+                                     The tree above with a button to open a modal form view for dfr.form.field is a common pattern.
+                                     For a richer experience, form_builder_widget.js would manage this area.
+                                -->
+                            </field>
+                        </page>
+                        <page string="Settings &amp; Description" name="page_settings">
+                            <group>
+                                <field name="description" placeholder="Specific notes or changes for this version..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="dfr_form_version_view_search" model="ir.ui.view">
+        <field name="name">dfr.form.version.search</field>
+        <field name="model">dfr.form.version</field>
+        <field name="arch" type="xml">
+            <search string="Search Form Versions">
+                <field name="name" string="Form Name"/>
+                <field name="version_number"/>
+                <field name="form_master_id" string="Form Master"/>
+                <filter string="Draft" name="draft" domain="[('status','=','draft')]"/>
+                <filter string="Published" name="published" domain="[('status','=','published')]"/>
+                <filter string="Archived" name="archived" domain="[('status','=','archived')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Form Master" name="group_by_form_master" context="{'group_by':'form_master_id'}"/>
+                    <filter string="Status" name="group_by_status" context="{'group_by':'status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dfr_form_version_tree" model="ir.actions.act_window">
+        <field name="name">All Form Versions</field>
+        <field name="res_model">dfr.form.version</field>
+        <field name="view_mode">tree,form</field>
+         <field name="context">{}</field> <!-- Clear default group_by if any -->
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No form versions found.
+            </p><p>
+                Create versions from a Form Master or create a new Form Master first.
+            </p>
+        </field>
+    </record>
+
+    <!-- dfr.form.field Views (for Modal) -->
+    <record id="dfr_form_field_view_form_modal" model="ir.ui.view">
+        <field name="name">dfr.form.field.form.modal</field>
+        <field name="model">dfr.form.field</field>
+        <field name="arch" type="xml">
+            <form string="Form Field Properties">
+                <sheet>
+                    <group>
+                        <group string="Basic Properties">
+                            <field name="form_version_id" invisible="1" readonly="1"/> <!-- Should be in context -->
+                            <field name="label" required="1"/>
+                            <field name="name" string="Technical Name" required="1" help="Code-friendly name, e.g., 'farmer_age'. No spaces or special characters."/>
+                            <field name="field_type" required="1"/>
+                            <field name="sequence" groups="base.group_no_one"/> <!-- Advanced setting -->
+                            <field name="is_required" string="Required (UI Hint)"/>
+                        </group>
+                        <group string="Display &amp; Defaults">
+                            <field name="placeholder" attrs="{'invisible': [('field_type', 'not in', ['text', 'number'])]}"/>
+                            <field name="help_text" string="Tooltip/Help Text"/>
+                            <field name="default_value_text" string="Default Text" attrs="{'invisible': [('field_type', 'not in', ['text', 'selection', 'computed_text'])]}"/>
+                            <field name="default_value_number" string="Default Number" attrs="{'invisible': [('field_type', '!=', 'number')]}"/>
+                            <field name="default_value_boolean" string="Default Boolean" attrs="{'invisible': [('field_type', '!=', 'boolean')]}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Options &amp; Values" attrs="{'invisible': [('field_type', 'not in', ['selection', 'multi_selection'])]}">
+                             <group>
+                                <field name="selection_options"
+                                   placeholder="value1:Label 1&#10;value2:Label 2&#10;value3:Another Label"
+                                   help="One option per line. Format: 'internal_value:Displayed Label'. The internal_value is stored."/>
+                             </group>
+                        </page>
+                        <page string="Validation Rules">
+                            <group>
+                                 <group string="Common Validation">
+                                    <field name="validation_rule_required" string="Is Required (Strict Validation)"/>
+                                    <field name="validation_error_message" placeholder="e.g., This field cannot be empty."/>
+                                 </group>
+                                 <group string="Text Validation" attrs="{'invisible': [('field_type', '!=', 'text')]}">
+                                    <field name="validation_rule_min_length"/>
+                                    <field name="validation_rule_max_length"/>
+                                    <field name="validation_rule_regex" placeholder="e.g., ^[A-Za-z]+$"/>
+                                 </group>
+                                 <group string="Number Validation" attrs="{'invisible': [('field_type', '!=', 'number')]}">
+                                    <field name="validation_rule_min_value"/>
+                                    <field name="validation_rule_max_value"/>
+                                 </group>
+                            </group>
+                        </page>
+                        <page string="Conditional Logic">
+                            <group>
+                                <field name="conditional_logic_json" widget="ace" options="{'mode': 'json'}"
+                                       placeholder="[{'field_name': 'other_field_technical_name', 'operator': '=', 'value': 'some_value', 'value_type': 'text'}]"
+                                       help="JSON defining conditions to show this field. See documentation for structure. Example: [{'field_name': 'has_children', 'operator': '=', 'value': true, 'value_type': 'boolean'}]"/>
+                            </group>
+                             <p>
+                                <strong>Example JSON Structure for Conditional Logic:</strong><br/>
+                                A list of conditions. All conditions in the list must be true (AND logic) for the field to be shown.<br/>
+                                Each condition is a dictionary with keys:
+                                <ul>
+                                    <li><code>field_name</code>: Technical name of the field whose value triggers this condition.</li>
+                                    <li><code>operator</code>: Comparison operator (e.g., '=', '!=', '&gt;', '&lt;', '&gt;=', '&lt;=').</li>
+                                    <li><code>value</code>: The value to compare against.</li>
+                                    <li><code>value_type</code>: (Optional, defaults to 'text') The type of value for comparison ('text', 'number', 'boolean'). Important for correct comparison.</li>
+                                </ul>
+                                Example: To show this field only if 'country' is 'USA' AND 'age' is greater than 18:<br/>
+                                <code>
+                                    [<br/>
+                                    &nbsp;&nbsp;{"field_name": "country_technical_name", "operator": "=", "value": "USA", "value_type": "text"},<br/>
+                                    &nbsp;&nbsp;{"field_name": "age_technical_name", "operator": ">", "value": 18, "value_type": "number"}<br/>
+                                    ]
+                                </code>
+                            </p>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dfr_form_field_form_modal" model="ir.actions.act_window">
+        <field name="name">Form Field Properties</field>
+        <field name="res_model">dfr.form.field</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field> <!-- Open in modal -->
+        <field name="view_id" ref="dfr_form_field_view_form_modal"/>
+    </record>
+
+</odoo>

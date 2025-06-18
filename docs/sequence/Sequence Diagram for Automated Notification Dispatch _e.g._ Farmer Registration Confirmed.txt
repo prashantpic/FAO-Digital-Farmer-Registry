@@ -1,0 +1,44 @@
+sequenceDiagram
+    actor "Farmer Registry Engine" as dfrmodulefarmerregistry002
+    participant "Odoo Runtime Automated Actions" as dfrinfraodooappcontainer019
+    participant "Notifications Engine" as dfrmodulenotificationsengine007
+    participant "External Connectors" as dfrmoduleexternalconnectors009
+    actor "External SMS Email Gateway" as ExternalSMSEmailGateway
+
+    note over dfrmodulefarmerregistry002: Precondition: Farmer's status is updated to 'Active' within the Farmer Registry Engine, triggering Odoo's internal event mechanism.
+
+    dfrmodulefarmerregistry002-dfrinfraodooappcontainer019: 1. [Internal Odoo Event] Farmer Status Updated (farmerid, newstatus='Active')
+    activate dfrinfraodooappcontainer019
+
+    dfrinfraodooappcontainer019-dfrmodulenotificationsengine007: 2. HandleFarmerRegistrationConfirmed(farmerid)
+    activate dfrmodulenotificationsengine007
+
+    dfrmodulenotificationsengine007-dfrmodulefarmerregistry002: 2.1. GetNotificationRecipientDetails(farmerid, eventtype='FarmerRegistrationConfirmed')
+    activate dfrmodulefarmerregistry002
+    dfrmodulefarmerregistry002--dfrmodulenotificationsengine007: RecipientDetails(phone, email, language, templateid)
+    deactivate dfrmodulefarmerregistry002
+
+    note right of dfrmodulenotificationsengine007: Notification Engine determines recipients, retrieves appropriate template (REQ-NS-002), and populates placeholders with context data (REQ-NS-005).
+    dfrmodulenotificationsengine007-dfrmodulenotificationsengine007: 2.2. Format Message (Internal: uses templateid, language, and farmer data)
+
+    loop For each channel (SMS, Email) identified in RecipientDetails
+        dfrmodulenotificationsengine007-dfrmoduleexternalconnectors009: 2.3.1. SendNotification(channeltype, recipientaddress, formattedmessage)
+        activate dfrmoduleexternalconnectors009
+
+        dfrmoduleexternalconnectors009-ExternalSMSEmailGateway: 2.3.1.1. APICall:SubmitMessage(details)
+        activate ExternalSMSEmailGateway
+        note right of dfrmoduleexternalconnectors009: Error handling (e.g., gateway unavailable, invalid recipient) occurs within External Connectors and status is relayed back. (REQ-NS-004)
+        ExternalSMSEmailGateway--dfrmoduleexternalconnectors009: APIResponse:MessageStatus(status, messageid, errorinfo)
+        deactivate ExternalSMSEmailGateway
+
+        dfrmoduleexternalconnectors009--dfrmodulenotificationsengine007: DispatchAttemptResult(channeltype, status, gatewaymessageid, errorinfo)
+        deactivate dfrmoduleexternalconnectors009
+    end
+
+    note right of dfrmodulenotificationsengine007: Updates Odoo models like mail.message or a custom notification log table with the dispatch attempt details. (REQ-NS-007)
+    dfrmodulenotificationsengine007-dfrmodulenotificationsengine007: 2.4. RecordNotificationLog(farmerid, channeltype, status, gatewaymessageid, details)
+
+    dfrmodulenotificationsengine007--dfrinfraodooappcontainer019: NotificationHandlingComplete(status)
+    deactivate dfrmodulenotificationsengine007
+
+    deactivate dfrinfraodooappcontainer019

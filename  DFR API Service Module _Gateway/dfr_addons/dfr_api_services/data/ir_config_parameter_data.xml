@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1"> <!-- noupdate="1" means these records are only created if they don't exist -->
+        
+        <!-- JWT Configuration -->
+        <record id="dfr_api_jwt_secret_key" model="ir.config_parameter">
+            <field name="key">dfr_api.jwt_secret_key</field>
+            <!-- IMPORTANT: This is a placeholder. Generate a strong, unique secret for each deployment 
+                 and set it via environment variable or secure configuration management. -->
+            <field name="value">!!REPLACE_THIS_IN_PRODUCTION_WITH_A_STRONG_RANDOM_SECRET_KEY!!</field>
+        </record>
+        <record id="dfr_api_access_token_expiry_seconds" model="ir.config_parameter">
+            <field name="key">dfr_api.access_token_expiry_seconds</field>
+            <field name="value">3600</field> <!-- 1 hour -->
+        </record>
+        <record id="dfr_api_refresh_token_expiry_seconds" model="ir.config_parameter">
+            <field name="key">dfr_api.refresh_token_expiry_seconds</field>
+            <field name="value">604800</field> <!-- 7 days -->
+        </record>
+
+        <!-- Mobile App Version Configuration -->
+        <record id="dfr_api_mobile_app_latest_version" model="ir.config_parameter">
+            <field name="key">dfr_api.mobile_app_latest_version</field>
+            <field name="value">1.0.0</field>
+        </record>
+        <record id="dfr_api_mobile_app_min_required_version" model="ir.config_parameter">
+            <field name="key">dfr_api.mobile_app_min_required_version</field>
+            <field name="value">1.0.0</field>
+        </record>
+        <record id="dfr_api_mobile_app_update_url" model="ir.config_parameter">
+            <field name="key">dfr_api.mobile_app_update_url</field>
+            <field name="value"></field> <!-- e.g., Play Store link or direct APK link -->
+        </record>
+         <record id="dfr_api_mobile_app_is_critical_update" model="ir.config_parameter">
+            <field name="key">dfr_api.mobile_app_is_critical_update</field>
+            <field name="value">False</field> <!-- Set to True to force update -->
+        </record>
+        <record id="dfr_api_mobile_app_changelog" model="ir.config_parameter">
+            <field name="key">dfr_api.mobile_app_changelog</field>
+            <field name="value">Initial release.</field>
+        </record>
+
+        <!-- Add other API related configurations here -->
+
+    </data>
+</odoo>

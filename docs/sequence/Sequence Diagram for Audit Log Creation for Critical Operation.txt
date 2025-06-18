@@ -1,0 +1,43 @@
+sequenceDiagram
+    actor "Source Odoo Module (e.g., Farmer Registry)" as SourceOdooModule
+    participant "Audit Logging Enhancements Module" as AuditLoggingEnhancementsModule
+    participant "PostgreSQL Database" as PostgreSQLDatabase
+
+    note over SourceOdooModule, PostgreSQLDatabase: REQ-SADG-005, REQ-FHR-010, REQ-SADG-006 are addressed by this flow.
+    note over AuditLoggingEnhancementsModule: This diagram focuses on custom audit logic, extending Odoo's standard mechanisms.
+
+    SourceOdooModule-SourceOdooModule: 1. User action triggers critical operation (e.g., farmer.write(updates))
+    activate SourceOdooModule
+
+    note over SourceOdooModule: The Source Module initiates and commits the DB transaction for atomicity.
+    SourceOdooModule-SourceOdooModule: 2. Begin Transaction & Perform main data modification logic
+    SourceOdooModule-SourceOdooModule: 3. Gather data for audit (user, entity, old/new values, operation)
+
+    SourceOdooModule-AuditLoggingEnhancementsModule: 4. createcustomauditentry(auditdatapackage)
+    activate AuditLoggingEnhancementsModule
+
+    AuditLoggingEnhancementsModule-AuditLoggingEnhancementsModule: 5. Format auditdatapackage into specific auditpayload
+    AuditLoggingEnhancementsModule-PostgreSQLDatabase: 6. ORM.create('dfr.customauditlog', formattedauditpayload)
+    activate PostgreSQLDatabase
+
+    alt Audit Log Creation Fails
+        PostgreSQLDatabase--AuditLoggingEnhancementsModule: 7.1. [Error Creating Custom Audit Log]
+        deactivate PostgreSQLDatabase
+        AuditLoggingEnhancementsModule--SourceOdooModule: 8.1. [Custom Audit Log Failure]
+        deactivate AuditLoggingEnhancementsModule
+        SourceOdooModule-SourceOdooModule: 9.1. Rollback Transaction
+        SourceOdooModule-SourceOdooModule: 10.1. Return [Operation Failed Due to Audit Error] to User
+    else Success
+        PostgreSQLDatabase--AuditLoggingEnhancementsModule: 7. [Custom Audit Log Entry ID]
+        deactivate PostgreSQLDatabase
+        AuditLoggingEnhancementsModule--SourceOdooModule: 8. [Custom Audit Log Success]
+        deactivate AuditLoggingEnhancementsModule
+        SourceOdooModule-PostgreSQLDatabase: 9. ORM.write('mainentitymodel', modifiedmaindata)
+        activate PostgreSQLDatabase
+        PostgreSQLDatabase--SourceOdooModule: 10. [Main Entity Update Success]
+        deactivate PostgreSQLDatabase
+        SourceOdooModule-SourceOdooModule: 11. Commit Transaction
+        SourceOdooModule-SourceOdooModule: 12. Return [Operation Successful] to User
+    end
+
+    deactivate SourceOdooModule

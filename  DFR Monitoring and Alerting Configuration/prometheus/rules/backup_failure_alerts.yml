@@ -1,0 +1,21 @@
+groups:
+- name: backup_status_alerts
+  rules:
+  - alert: DFRBackupJobFailed
+    expr: backup_last_status != 0 # Assumes metric 'backup_last_status' where 0 is success
+    for: 1m # Alert quickly on failure
+    labels:
+      severity: critical
+      service: backup
+    annotations:
+      summary: "DFR Backup Job Failed on instance {{ $labels.instance }} (Country: {{ $labels.country }})"
+      description: "The last DFR backup job for instance {{ $labels.instance }} reported a failure. Check backup logs immediately."
+  - alert: DFRBackupTooOld
+    expr: time() - backup_last_success_timestamp_seconds > 25 * 3600 # Older than 25 hours
+    for: 1h
+    labels:
+      severity: critical
+      service: backup
+    annotations:
+      summary: "DFR Backup is too old for instance {{ $labels.instance }} (Country: {{ $labels.country }})"
+      description: "The last successful DFR backup for instance {{ $labels.instance }} is older than 25 hours. Last success was at {{ $value | मानव टाइमस्टैम्प }}. Investigate backup system."

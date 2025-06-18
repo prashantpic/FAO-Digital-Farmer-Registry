@@ -1,0 +1,122 @@
+sequenceDiagram
+    actor "Enumerator" as Enumerator
+    participant "Mobile UI" as dfrmobileapppresentation014
+    participant "Mobile Logic" as dfrmobileappbusinesslogic015
+    participant "Mobile Platform Services" as dfrmobileappplatformservices018
+    participant "Mobile Local DB" as dfrmobileapplocaldatastore017
+    participant "Mobile Sync Service" as dfrmobileappdatasync016
+    participant "DFR REST API Service" as dfrmodulerestapi008
+    participant "Farmer Registry Engine" as dfrmodulefarmerregistry002
+    participant "Audit Log Engine" as dfrmodulesecurityauditlog013
+    participant "Notification Engine" as dfrmodulenotificationsengine007
+
+    note over Enumerator, dfrmodulenotificationsengine007: Offline Phase: Enumerator captures data without internet. All data is saved to encrypted local SQLite DB.
+
+    Enumerator-dfrmobileapppresentation014: 1. Logs in (locally authenticated)
+    activate dfrmobileapppresentation014
+    dfrmobileapppresentation014--Enumerator: 1. Login successful, displays main menu
+    deactivate dfrmobileapppresentation014
+
+    Enumerator-dfrmobileapppresentation014: 2. Navigates to 'New Farmer' form
+    activate dfrmobileapppresentation014
+    dfrmobileapppresentation014--Enumerator: 2. Displays blank farmer registration form
+    deactivate dfrmobileapppresentation014
+
+    Enumerator-dfrmobileapppresentation014: 3. Enters farmer details (name, DOB, sex, contact, etc.)
+    activate dfrmobileapppresentation014
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 3.1. validateFarmerData(formData)
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 3.1. validationResult (e.g., success/errors)
+    deactivate dfrmobileappbusinesslogic015
+    
+    Enumerator-dfrmobileapppresentation014: 4. Clicks 'Save Farmer' (offline)
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 4.1. saveFarmerOffline(farmerData)
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015-dfrmobileapplocaldatastore017: 4.1.1. insertFarmer(farmerData, syncStatus='PendingCreate')
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappbusinesslogic015: 4.1.1. saveConfirmation (local ID)
+    deactivate dfrmobileapplocaldatastore017
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 4.1. localFarmerId
+    deactivate dfrmobileappbusinesslogic015
+    dfrmobileapppresentation014--Enumerator: 4.2. Displays 'Farmer saved locally' message
+    deactivate dfrmobileapppresentation014
+
+    Enumerator-dfrmobileapppresentation014: 5. Navigates to 'New Plot' form for the saved farmer
+    activate dfrmobileapppresentation014
+    dfrmobileapppresentation014--Enumerator: 5. Displays blank plot registration form
+    deactivate dfrmobileapppresentation014
+
+    Enumerator-dfrmobileapppresentation014: 6. Enters plot details (size, tenure, crop)
+    activate dfrmobileapppresentation014
+    dfrmobileapppresentation014-dfrmobileappplatformservices018: 6.1. requestGPSCoordinates()
+    activate dfrmobileappplatformservices018
+    dfrmobileappplatformservices018--dfrmobileapppresentation014: 6.1. gpsCoordinates
+    deactivate dfrmobileappplatformservices018
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 6.2. validatePlotData(plotDataWithGPS)
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 6.2. validationResult
+    deactivate dfrmobileappbusinesslogic015
+
+    Enumerator-dfrmobileapppresentation014: 7. Clicks 'Save Plot' (offline)
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 7.1. savePlotOffline(plotData, localFarmerId)
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015-dfrmobileapplocaldatastore017: 7.1.1. insertPlot(plotData, syncStatus='PendingCreate')
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappbusinesslogic015: 7.1.1. saveConfirmation
+    deactivate dfrmobileapplocaldatastore017
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 7.1. localPlotId
+    deactivate dfrmobileappbusinesslogic015
+    dfrmobileapppresentation014--Enumerator: 7.2. Displays 'Plot saved locally' message
+    deactivate dfrmobileapppresentation014
+
+    note over Enumerator, dfrmodulenotificationsengine007: Synchronization Phase: When connectivity is available, app sends queued data. Conflict resolution logic (REQ-4-007) is applied server-side; this diagram shows server returning status and mobile updating local records.
+
+    Enumerator-dfrmobileapppresentation014: 8. Initiates data synchronization (or app detects connectivity)
+    activate dfrmobileapppresentation014
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 8.1. startSynchronization()
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015-dfrmobileappdatasync016: 8.1.1. syncPendingData()
+    activate dfrmobileappdatasync016
+    dfrmobileappdatasync016-dfrmobileapplocaldatastore017: 8.1.1.1. getPendingRecordsBatch()
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappdatasync016: 8.1.1.1. pendingDataBatch (farmers, plots)
+    deactivate dfrmobileapplocaldatastore017
+    dfrmobileappdatasync016-dfrmodulerestapi008: 8.1.1.2. POST /api/mobile/sync (syncDataPayload: pendingDataBatch)
+    activate dfrmodulerestapi008
+    dfrmodulerestapi008-dfrmodulefarmerregistry002: 8.1.1.2.1. processFarmerSyncData(farmerDataFromBatch)
+    activate dfrmodulefarmerregistry002
+    note right of dfrmodulefarmerregistry002: Odoo modules (Farmer Registry, Audit, Notifications) run within the DFR Odoo Backend Platform (not explicitly shown as a separate lifeline receiver for module-to-module calls).
+    dfrmodulefarmerregistry002-dfrmodulesecurityauditlog013: 8.1.1.2.1.1. logFarmerCreation(farmerDetails, userId)
+    activate dfrmodulesecurityauditlog013
+    deactivate dfrmodulesecurityauditlog013
+    dfrmodulefarmerregistry002-dfrmodulenotificationsengine007: 8.1.1.2.1.2. triggerFarmerRegisteredNotification(farmerDetails)
+    activate dfrmodulenotificationsengine007
+    deactivate dfrmodulenotificationsengine007
+    dfrmodulefarmerregistry002--dfrmodulerestapi008: 8.1.1.2.1. farmerProcessingResult (UID, status)
+    deactivate dfrmodulefarmerregistry002
+    dfrmodulerestapi008-dfrmodulefarmerregistry002: 8.1.1.2.2. processPlotSyncData(plotDataFromBatch)
+    activate dfrmodulefarmerregistry002
+    dfrmodulefarmerregistry002-dfrmodulesecurityauditlog013: 8.1.1.2.2.1. logPlotCreation(plotDetails, userId)
+    activate dfrmodulesecurityauditlog013
+    deactivate dfrmodulesecurityauditlog013
+    dfrmodulefarmerregistry002--dfrmodulerestapi008: 8.1.1.2.2. plotProcessingResult (status)
+    deactivate dfrmodulefarmerregistry002
+    opt If conflicts detected by API
+        note over dfrmodulerestapi008: If conflicts detected by API based on timestamps or versions. REQ-4-007
+        dfrmodulerestapi008-dfrmodulefarmerregistry002: 8.1.1.2.3. resolveConflicts(conflictingData)
+        activate dfrmodulefarmerregistry002
+        dfrmodulefarmerregistry002--dfrmodulerestapi008: 8.1.1.2.3. resolvedConflictResults
+        deactivate dfrmodulefarmerregistry002
+    end
+    dfrmodulerestapi008--dfrmobileappdatasync016: 8.1.1.2. syncAcknowledgementPayload
+    deactivate dfrmodulerestapi008
+    note over dfrmobileappdatasync016: Updates local syncStatus to 'Synced', 'Error', or 'Conflict'. Stores server UIDs.
+    dfrmobileappdatasync016-dfrmobileapplocaldatastore017: 8.1.1.3. updateLocalRecordStatuses(syncAcknowledgementPayload)
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappdatasync016: 8.1.1.3. updateConfirmation
+    deactivate dfrmobileapplocaldatastore017
+    deactivate dfrmobileappdatasync016
+    dfrmobileappbusinesslogic015-dfrmobileapppresentation014: 8.2. updateSyncStatusDisplay(summary)
+    dfrmobileapppresentation014--Enumerator: 8.3. Displays 'Synchronization complete' (with summary/errors)
+    deactivate dfrmobileapppresentation014
+    deactivate dfrmobileappbusinesslogic_015

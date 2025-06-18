@@ -1,0 +1,9 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+access_data_import_job_system_admin,data.import.job system admin access,model_data_import_job,base.group_system,1,1,1,1
+access_data_import_job_log_system_admin,data.import.job.log system admin access,model_data_import_job_log,base.group_system,1,1,1,1
+access_bulk_data_import_wizard_system_admin,bulk.data.import.wizard system admin access,model_bulk_data_import_wizard,base.group_system,1,1,1,1
+
+# If a custom group 'group_dfr_data_migration_manager' is defined:
+# access_data_import_job_migration_manager,data.import.job migration manager access,model_data_import_job,group_dfr_data_migration_manager,1,1,1,0
+# access_data_import_job_log_migration_manager,data.import.job.log migration manager access,model_data_import_job_log,group_dfr_data_migration_manager,1,1,1,0
+# access_bulk_data_import_wizard_migration_manager,bulk.data.import.wizard migration manager access,model_bulk_data_import_wizard,group_dfr_data_migration_manager,1,1,1,1

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Deduplication Review Wizard Views -->
+
+    <!-- Form View -->
+    <record id="dfr_deduplication_review_wizard_form" model="ir.ui.view">
+        <field name="name">dfr.deduplication.review.wizard.form</field>
+        <field name="model">dfr.deduplication.review.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Review Potential Duplicates">
+                <group>
+                     <field name="farmer_ids_to_review" invisible="1"/>
+                     <field name="selected_farmer_id" options="{'no_create': True, 'no_open': True}"
+                            domain="[('id', 'in', farmer_ids_to_review)]"
+                            help="Select the record you consider the Master."/>
+                     <field name="potential_duplicate_farmer_id" options="{'no_create': True, 'no_open': True}"
+                            domain="[('id', 'in', farmer_ids_to_review), ('id', '!=', selected_farmer_id)]"
+                            help="Select a record from the initial list to compare against the Master, or one of its potential duplicates."/>
+                </group>
+
+                <notebook>
+                    <page string="Comparison">
+                        <field name="comparison_data_html" nolabel="1"/>
+                    </page>
+                    <!--
+                    <page string="Field Merge Choices (Advanced)" groups="base.group_system">
+                        <field name="master_record_selection"/>
+                        <p>Define specific fields to keep from master or duplicate. (This UI part needs custom widget or more fields)</p>
+                        <field name="field_merge_choices_json" placeholder='e.g., {"name": "master", "contact_phone": DUPLICATE_ID_HERE}'/>
+                    </page>
+                    -->
+                </notebook>
+
+                <footer>
+                    <button name="action_load_comparison_data" type="object" string="Refresh Comparison" class="btn-secondary"
+                            attrs="{'invisible': [('selected_farmer_id', '=', False), ('potential_duplicate_farmer_id', '=', False)]}"/>
+                    <button name="action_merge_records" type="object" string="Merge Duplicate into Master" class="btn-primary"
+                            confirm="Are you sure you want to merge the 'Potential Duplicate' into the 'Master Farmer'? This action cannot be undone. The duplicate record will be archived."
+                            attrs="{'invisible': ['|', ('selected_farmer_id', '=', False), ('potential_duplicate_farmer_id', '=', False)]}"/>
+                     <button name="action_mark_as_not_duplicate" type="object" string="Mark as Not Duplicate" class="btn-warning"
+                             confirm="Are you sure you want to mark the selected 'Potential Duplicate' as NOT a duplicate of the 'Master Farmer'? This will clear its 'potential_duplicate' status if set."
+                             attrs="{'invisible': ['|', ('selected_farmer_id', '=', False), ('potential_duplicate_farmer_id', '=', False)]}"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Window Action for the wizard -->
+    <record id="action_dfr_deduplication_review_wizard" model="ir.actions.act_window">
+        <field name="name">Review Potential Duplicates</field>
+        <field name="res_model">dfr.deduplication.review.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_dfr_farmer"/>
+        <field name="binding_views">form,list</field>
+        <field name="context">{'default_farmer_ids_to_review': active_ids, 'default_selected_farmer_id': active_id if len(active_ids or []) == 1 else False}</field>
+    </record>
+
+</odoo>

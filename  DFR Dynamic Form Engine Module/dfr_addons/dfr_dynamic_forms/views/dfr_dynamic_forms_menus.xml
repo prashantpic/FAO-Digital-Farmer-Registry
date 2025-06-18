@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 
+        Assuming a main menu "Digital Farmer Registry" exists, e.g., with id `dfr_common.menu_dfr_root`.
+        If not, you might need to create one or use a more generic root like 'base.menu_custom'.
+        For this example, let's assume `dfr_common.menu_dfr_root` is available from a dependency.
+        If the main menu ID from `dfr_common` or `dfr_farmer_registry` is different, adjust `parent` attribute.
+        A common pattern is:
+        <menuitem id="menu_dfr_root" name="Digital Farmer Registry" sequence="10" web_icon="dfr_common,static/description/icon.png"/>
+    -->
+
+    <menuitem id="menu_dfr_dynamic_forms_root"
+              name="Dynamic Forms"
+              parent="dfr_common.menu_dfr_root" <!-- Adjust if root menu ID is different -->
+              sequence="20"/>
+
+    <menuitem id="menu_dfr_form_master"
+              name="Forms"
+              parent="menu_dfr_dynamic_forms_root"
+              action="action_dfr_form_master_tree"
+              sequence="10"/>
+
+    <menuitem id="menu_dfr_form_version_all"
+              name="All Form Versions"
+              parent="menu_dfr_dynamic_forms_root"
+              action="action_dfr_form_version_tree"
+              sequence="20"/>
+
+    <menuitem id="menu_dfr_form_submission"
+              name="Submissions"
+              parent="menu_dfr_dynamic_forms_root"
+              action="action_dfr_form_submission_tree"
+              sequence="30"/>
+
+</odoo>

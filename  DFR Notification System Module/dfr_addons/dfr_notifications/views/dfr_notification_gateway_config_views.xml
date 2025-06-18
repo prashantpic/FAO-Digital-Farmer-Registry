@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- dfr.notification.gateway.config Tree View -->
+        <record id="view_dfr_notification_gateway_config_tree" model="ir.ui.view">
+            <field name="name">dfr.notification.gateway.config.tree</field>
+            <field name="model">dfr.notification.gateway.config</field>
+            <field name="arch" type="xml">
+                <tree string="Notification Gateway Configurations">
+                    <field name="name"/>
+                    <field name="channel_type"/>
+                    <field name="provider_name"/>
+                    <field name="is_odoo_default_email"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- dfr.notification.gateway.config Form View -->
+        <record id="view_dfr_notification_gateway_config_form" model="ir.ui.view">
+            <field name="name">dfr.notification.gateway.config.form</field>
+            <field name="model">dfr.notification.gateway.config</field>
+            <field name="arch" type="xml">
+                <form string="Notification Gateway Configuration">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="name" class="oe_edit_only"/>
+                            <h1><field name="name" placeholder="e.g. Country X Primary SMS Gateway"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="channel_type" required="1"/>
+                                <field name="provider_name" placeholder="e.g. Twilio, SendGrid, Odoo Default Email"/>
+                                <field name="active" widget="boolean_toggle"/>
+                            </group>
+                            <group>
+                                 <field name="is_odoo_default_email"
+                                       attrs="{'invisible': [('channel_type', '!=', 'email')]}"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Credentials &amp; Settings" name="credentials_settings">
+                                <group>
+                                    <field name="api_key" widget="password"
+                                           attrs="{'invisible': [('is_odoo_default_email', '=', True)]}"/>
+                                    <field name="api_secret" widget="password"
+                                           attrs="{'invisible': [('is_odoo_default_email', '=', True)]}"/>
+                                    <field name="base_url" placeholder="e.g. https://api.provider.com/v3"
+                                           attrs="{'invisible': [('is_odoo_default_email', '=', True)]}"/>
+                                </group>
+                                 <group string="Channel Specific Settings" name="channel_specific_settings">
+                                    <field name="sender_id" placeholder="For SMS/Push"
+                                           attrs="{'invisible': ['|', ('is_odoo_default_email', '=', True), ('channel_type', '=', 'email')]}"/>
+                                    <field name="email_from" placeholder="e.g. notifications@example.com"
+                                           attrs="{'invisible': [('channel_type', '!=', 'email')]}"/>
+                                 </group>
+                            </page>
+                        </notebook>
+                         <div class="oe_grey" attrs="{'invisible': [('is_odoo_default_email', '=', False)]}">
+                            <p>
+                                When 'Is Odoo Default Email' is checked, notifications will be sent using Odoo's
+                                standard email configuration (Outgoing Mail Servers). Other credential fields are ignored.
+                                The 'Email From' field can still be used to specify a sender address for emails sent via this configuration.
+                                If 'Email From' is not set, Odoo's system default 'From' address will be used.
+                            </p>
+                        </div>
+                        <div class="oe_grey" attrs="{'invisible': [('is_odoo_default_email', '=', True)]}">
+                            <p>
+                                <strong>Security Note:</strong> For production, sensitive credentials like API keys/secrets should ideally be managed via environment variables or a secure secrets vault, accessed by the connector modules, rather than stored directly here. This form is for configuration reference.
+                            </p>
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- dfr.notification.gateway.config Search View -->
+        <record id="view_dfr_notification_gateway_config_search" model="ir.ui.view">
+            <field name="name">dfr.notification.gateway.config.search</field>
+            <field name="model">dfr.notification.gateway.config</field>
+            <field name="arch" type="xml">
+                <search string="Search Gateway Configurations">
+                    <field name="name"/>
+                    <field name="channel_type"/>
+                    <field name="provider_name"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                    <separator/>
+                    <filter string="Email Gateways" name="channel_email" domain="[('channel_type', '=', 'email')]"/>
+                    <filter string="SMS Gateways" name="channel_sms" domain="[('channel_type', '=', 'sms')]"/>
+                    <filter string="Push Gateways" name="channel_push" domain="[('channel_type', '=', 'push')]"/>
+                    <filter string="Odoo Default Email" name="is_odoo_default" domain="[('is_odoo_default_email', '=', True)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Channel Type" name="group_by_channel_type" context="{'group_by': 'channel_type'}"/>
+                        <filter string="Provider" name="group_by_provider_name" context="{'group_by': 'provider_name'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- dfr.notification.gateway.config Action Window -->
+        <record id="action_dfr_notification_gateway_config" model="ir.actions.act_window">
+            <field name="name">Gateway Configurations</field>
+            <field name="res_model">dfr.notification.gateway.config</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_dfr_notification_gateway_config_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Configure a new notification gateway.
+                </p><p>
+                    Setup credentials and settings for third-party services
+                    (like Twilio, SendGrid) or Odoo's default email system
+                    to send out notifications.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

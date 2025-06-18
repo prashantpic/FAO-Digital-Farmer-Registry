@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Top Level DFR Admin Portal Application Menu -->
+        <menuitem
+            id="menu_dfr_root"
+            name="DFR Admin Portal"
+            sequence="1"
+            web_icon="dfr_admin_portal_master,static/description/icon.png" /* Placeholder for actual icon */
+            groups="dfr_rbac_config.group_dfr_user" /* Base DFR user group from RBAC module */
+            />
+
+        <!-- Sub-menu for Farmer Registry Management -->
+        <menuitem
+            id="menu_dfr_farmer_registry_root"
+            name="Farmer Registry"
+            parent="menu_dfr_root"
+            sequence="10"
+            groups="dfr_rbac_config.group_dfr_enumerator,dfr_rbac_config.group_dfr_supervisor,dfr_rbac_config.group_dfr_national_admin"
+            action="dfr_farmer_registry.action_dfr_farmer_list" /* Example action from dfr_farmer_registry */
+            />
+        <!-- Further sub-menus for Household, Plot if needed under Farmer Registry, referencing actions from dfr_farmer_registry -->
+
+        <!-- Sub-menu for Dynamic Forms Management -->
+        <menuitem
+            id="menu_dfr_dynamic_forms_root"
+            name="Dynamic Forms"
+            parent="menu_dfr_root"
+            sequence="20"
+            groups="dfr_rbac_config.group_dfr_national_admin"
+            action="dfr_dynamic_forms.action_dfr_dynamic_form_list" /* Example action from dfr_dynamic_forms */
+            />
+
+        <!-- Sub-menu for Analytics & Reporting -->
+        <menuitem
+            id="menu_dfr_analytics_root"
+            name="Analytics &amp; Reporting"
+            parent="menu_dfr_root"
+            sequence="30"
+            groups="dfr_rbac_config.group_dfr_policy_maker,dfr_rbac_config.group_dfr_national_admin,dfr_rbac_config.group_dfr_supervisor"
+            action="dfr_analytics_dashboards.action_dfr_main_dashboard" /* Example action from dfr_analytics_dashboards */
+            />
+
+        <!-- Sub-menu for Configuration (Root for all settings) -->
+        <menuitem
+            id="menu_dfr_config_root"
+            name="Configuration"
+            parent="menu_dfr_root"
+            sequence="90"
+            groups="dfr_rbac_config.group_dfr_national_admin,dfr_rbac_config.group_dfr_super_admin"
+            />
+
+            <!-- Configuration > General Settings (linking to DFR_MOD_ADMIN_SETTINGS) -->
+            <menuitem
+                id="menu_dfr_general_settings"
+                name="General Settings"
+                parent="menu_dfr_config_root"
+                sequence="10"
+                action="dfr_admin_settings.action_dfr_config_settings" /* Example action from dfr_admin_settings */
+                groups="dfr_rbac_config.group_dfr_national_admin"
+                />
+
+            <!-- Configuration > User & Role Management (linking to DFR_MOD_RBAC_CONFIG or base Odoo user management) -->
+            <menuitem
+                id="menu_dfr_user_management"
+                name="User Management"
+                parent="menu_dfr_config_root"
+                sequence="20"
+                action="base.action_res_users" /* Standard Odoo action, permissions controlled by RBAC module */
+                groups="dfr_rbac_config.group_dfr_national_admin"
+                />
+            <menuitem
+                id="menu_dfr_role_management"
+                name="Role Management"
+                parent="menu_dfr_config_root"
+                sequence="25"
+                action="base.action_res_groups" /* Standard Odoo action, permissions controlled by RBAC module */
+                groups="dfr_rbac_config.group_dfr_national_admin,dfr_rbac_config.group_dfr_super_admin"
+                />
+
+            <!-- Configuration > Notification Settings (linking to DFR_MOD_NOTIFICATIONS_ENGINE) -->
+            <menuitem
+                id="menu_dfr_notification_settings"
+                name="Notification Settings"
+                parent="menu_dfr_config_root"
+                sequence="30"
+                action="dfr_notifications_engine.action_dfr_notification_template_list" /* Example action */
+                groups="dfr_rbac_config.group_dfr_national_admin"
+                />
+            
+            <!-- Configuration > Localization Settings (linking to DFR_MOD_LOCALIZATION_PACK_ADMIN_UI) -->
+            <menuitem
+                id="menu_dfr_localization_settings"
+                name="Localization"
+                parent="menu_dfr_config_root"
+                sequence="40"
+                action="dfr_localization_pack_admin_ui.action_dfr_language_packs" /* Example action */
+                groups="dfr_rbac_config.group_dfr_national_admin"
+                />
+            
+            <!-- Add other configuration sub-menus as needed -->
+            <!-- e.g., API Configuration, External Connectors, Data Management Tools, Audit Logs -->
+             <menuitem
+                id="menu_dfr_data_management_tools"
+                name="Data Management"
+                parent="menu_dfr_config_root"
+                sequence="50"
+                action="dfr_data_management_tools.action_dfr_data_import_wizard" /* Example placeholder */
+                groups="dfr_rbac_config.group_dfr_national_admin"
+                />
+             <menuitem
+                id="menu_dfr_audit_log_view"
+                name="Audit Logs"
+                parent="menu_dfr_config_root"
+                sequence="60"
+                action="dfr_security_audit_log_ui.action_dfr_audit_log_tree" /* Example placeholder */
+                groups="dfr_rbac_config.group_dfr_national_admin,dfr_rbac_config.group_dfr_support_team"
+                />
+
+        <!-- Optional: Master DFR Dashboard Menu Item -->
+        <menuitem
+            id="menu_dfr_master_dashboard"
+            name="DFR Overview Dashboard"
+            parent="menu_dfr_root"
+            sequence="5"
+            action="action_dfr_master_dashboard_view" /* Action defined in dfr_master_actions.xml */
+            groups="dfr_rbac_config.group_dfr_national_admin,dfr_rbac_config.group_dfr_supervisor,dfr_rbac_config.group_dfr_policy_maker"
+            />
+
+    </data>
+</odoo>

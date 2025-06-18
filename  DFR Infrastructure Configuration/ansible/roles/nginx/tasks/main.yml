@@ -1,0 +1,167 @@
+---
+- name: Install Nginx (package based)
+  ansible.builtin.package:
+    name: nginx
+    state: present
+  become: true
+  when: nginx_install_method | default('package') == 'package'
+
+- name: Create directories for SSL certificates if they don't exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755' # Or more restrictive if needed
+  loop:
+    - "{{ nginx_ssl_cert_dir_on_host | default('/etc/nginx/ssl') }}"
+    - "{{ nginx_ssl_cert_dir_on_host | default('/etc/nginx/ssl') }}/live/{{ server_domain_name | default('example.com') }}" # For certbot structure
+  become: true
+  when: nginx_ssl_certificate_path_on_host is defined or use_lets_encrypt | default(false)
+
+# This task is a placeholder. SSL certs should be securely copied or generated.
+- name: Copy SSL certificate and key (if provided manually)
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: '0600' # Key should be restrictive
+  loop:
+    - { src: "{{ local_ssl_certificate_path }}", dest: "{{ nginx_ssl_certificate_path_on_host }}" }
+    - { src: "{{ local_ssl_certificate_key_path }}", dest: "{{ nginx_ssl_certificate_key_path_on_host }}" }
+  when:
+    - nginx_ssl_certificate_path_on_host is defined
+    - nginx_ssl_certificate_key_path_on_host is defined
+    - local_ssl_certificate_path is defined # These vars would need to be passed
+    - local_ssl_certificate_key_path is defined
+    - not (use_lets_encrypt | default(false))
+  become: true
+  notify: Reload Nginx
+
+- name: Install Certbot and Nginx plugin (if using Let's Encrypt on Debian/Ubuntu)
+  ansible.builtin.apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+  when:
+    - use_lets_encrypt | default(false)
+    - ansible_os_family == "Debian"
+  become: true
+
+- name: Install Certbot and Nginx plugin (if using Let's Encrypt on RHEL/CentOS)
+  ansible.builtin.yum:
+    name:
+      - certbot
+      - python3-certbot-nginx # May vary, e.g. python2-certbot-nginx or just certbot-nginx
+    state: present
+  when:
+    - use_lets_encrypt | default(false)
+    - ansible_os_family == "RedHat"
+  become: true
+
+# This is a simplified Certbot command. For production, more options are needed (email, non-interactive, etc.)
+- name: Obtain Let's Encrypt SSL certificate
+  ansible.builtin.command: "certbot --nginx -d {{ server_domain_name }} --non-interactive --agree-tos --email {{ lets_encrypt_email | default('admin@example.com') }} --redirect"
+  args:
+    creates: "/etc/letsencrypt/live/{{ server_domain_name }}/fullchain.pem"
+  when: use_lets_encrypt | default(false)
+  become: true
+  notify: Reload Nginx
+  vars:
+    # Set default paths if using Let's Encrypt and specific paths not overridden
+    nginx_ssl_certificate_path_on_host: "/etc/letsencrypt/live/{{ server_domain_name }}/fullchain.pem"
+    nginx_ssl_certificate_key_path_on_host: "/etc/letsencrypt/live/{{ server_domain_name }}/privkey.pem"
+
+
+- name: Deploy Nginx configuration for Odoo
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "/etc/nginx/sites-available/{{ nginx_conf_filename | default('odoo_dfr') }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: Reload Nginx
+  vars:
+    # Adjust paths for template based on container vs host Nginx
+    # SDS template uses 'ssl_certificate_path_on_host_container_path_if_docker'
+    # This logic should be in the template or vars passed to it.
+    # For now, we assume paths are set correctly for host based nginx,
+    # or updated by certbot task if use_lets_encrypt is true.
+    effective_ssl_certificate_path: "{{ nginx_ssl_certificate_path_on_host }}"
+    effective_ssl_certificate_key_path: "{{ nginx_ssl_certificate_key_path_on_host }}"
+
+
+- name: Enable Nginx site configuration
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ nginx_conf_filename | default('odoo_dfr') }}"
+    dest: "/etc/nginx/sites-enabled/{{ nginx_conf_filename | default('odoo_dfr') }}"
+    state: link
+    owner: root
+    group: root
+  become: true
+  notify: Reload Nginx
+
+- name: Ensure Nginx default site is disabled (optional)
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+  when: nginx_disable_default_site | default(true)
+  notify: Reload Nginx
+
+- name: Test Nginx configuration
+  ansible.builtin.command: nginx -t
+  become: true
+  changed_when: false # This command does not change state
+  register: nginx_test_output
+  failed_when: "nginx_test_output.rc != 0"
+
+- name: Ensure Nginx service is started and enabled
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: yes
+  become: true
+
+# Tasks for running Nginx as a Docker container (conditional)
+- name: Pull Nginx Docker image
+  community.docker.docker_image:
+    name: "{{ nginx_image_name }}"
+    tag: "{{ nginx_image_tag | default('latest') }}"
+    source: pull
+  when: nginx_install_method | default('package') == 'docker'
+
+- name: Deploy Nginx configuration for Odoo (for Dockerized Nginx)
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ nginx_docker_config_host_path }}/{{ nginx_conf_filename | default('odoo_dfr.conf') }}" # Host path for config
+    owner: "{{ ansible_user | default(ansible_env.USER, true) }}" # Or root if needed for volume mount
+    group: "{{ ansible_user | default(ansible_env.USER, true) }}"
+    mode: '0644'
+  when: nginx_install_method | default('package') == 'docker'
+  vars:
+    # Paths inside the container
+    effective_ssl_certificate_path: "{{ nginx_docker_ssl_cert_container_path | default('/etc/nginx/ssl/fullchain.pem') }}"
+    effective_ssl_certificate_key_path: "{{ nginx_docker_ssl_key_container_path | default('/etc/nginx/ssl/privkey.pem') }}"
+
+
+- name: Run Nginx Docker container
+  community.docker.docker_container:
+    name: "{{ nginx_container_name | default('dfr_nginx_proxy') }}"
+    image: "{{ nginx_image_name }}:{{ nginx_image_tag | default('latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "{{ nginx_docker_config_host_path }}/{{ nginx_conf_filename | default('odoo_dfr.conf') }}:/etc/nginx/conf.d/default.conf:ro"
+      - "{{ nginx_docker_ssl_cert_host_path }}:{{ nginx_docker_ssl_cert_container_path | default('/etc/nginx/ssl/fullchain.pem') }}:ro" # Mount actual cert
+      - "{{ nginx_docker_ssl_key_host_path }}:{{ nginx_docker_ssl_key_container_path | default('/etc/nginx/ssl/privkey.pem') }}:ro"   # Mount actual key
+      # Add other necessary volume mounts (e.g., for Certbot if used with Docker Nginx)
+    env: "{{ nginx_env_vars | default({}) }}"
+  become: true # Docker daemon usually runs as root
+  when: nginx_install_method | default('package') == 'docker'
+  # Note: Certbot with Dockerized Nginx is more complex, often involves a separate Certbot container
+  # or specific Nginx images with Certbot integration. Simplified here.

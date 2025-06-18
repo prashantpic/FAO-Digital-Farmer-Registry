@@ -1,0 +1,51 @@
+[options]
+; This is the password that allows database operations:
+admin_passwd = {{ODOO_ADMIN_PASSWD}}
+db_host = {{ODOO_DB_HOST}}
+db_port = {{ODOO_DB_PORT}}
+db_user = {{ODOO_DB_USER}}
+db_password = {{ODOO_DB_PASSWORD}}
+
+; Default addons path, will be replaced by entrypoint.sh with combined path
+; including /usr/lib/python3/dist-packages/odoo/addons (or equivalent) and /mnt/extra-addons
+addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons
+
+; Odoo HTTP Service Port Configuration
+; xmlrpc_port = 8069 ; Default, usually not changed here
+; longpolling_port = 8072 ; Default, usually not changed here
+
+; Performance settings
+workers = {{ODOO_WORKERS | default(0)}}
+limit_time_cpu = {{ODOO_LIMIT_TIME_CPU | default(600)}}
+limit_time_real = {{ODOO_LIMIT_TIME_REAL | default(1200)}}
+; limit_memory_hard = 2684354560 ; Example: 2.5GB
+; limit_memory_soft = 2147483648 ; Example: 2GB
+; limit_request = 8192
+
+; Enable if Odoo is behind a reverse proxy
+proxy_mode = True
+
+; Logging settings
+log_level = {{ODOO_LOG_LEVEL | default("info")}}
+; logfile = /var/log/odoo/odoo-server.log ; Usually handled by Docker logging
+
+; Security settings
+list_db = {{ODOO_LIST_DB | default("True")}} ; Set to False in production
+
+; Data directory
+data_dir = /var/lib/odoo
+
+; Other settings
+; without_demo = all ; To prevent loading demo data, can be set via env var for odoo command too
+; xmlrpc = True
+; netrpc = True
+; csv_internal_sep = ,
+; dbfilter = .* ; Or specific database name if only one is hosted
+
+; SMTP settings (better to configure via Odoo UI or environment variables if supported by specific modules)
+; email_from = False
+; smtp_server = localhost
+; smtp_port = 25
+; smtp_user = False
+; smtp_password = False
+; smtp_ssl = False

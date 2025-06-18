@@ -1,0 +1,44 @@
+sequenceDiagram
+    actor "DFR REST API Services" as dfr-module-rest-api-008
+    participant "Odoo Application Server" as dfr-infra-odoo-app-container-019
+    participant "DFR Farmer Registry Engine" as dfr-module-farmer-registry-002
+    participant "DFR Admin Settings Panel" as dfr-module-admin-settings-005
+
+    note over dfr-module-rest-api-008,dfr-module-admin-settings-005: This sequence starts after mobile sync data has been persisted to the Farmer Registry by the DFR REST API Services.
+
+    dfr-module-rest-api-008-dfr-module-rest-api-008: 1. Mobile sync data processing complete (data saved to Farmer Registry)
+    activate dfr-module-rest-api-008
+
+    dfr-module-rest-api-008-dfr-module-farmer-registry-002: 2. requestDeDuplicationCheck(syncedFarmerRecordIds)
+    activate dfr-module-farmer-registry-002
+
+    loop For each farmerId in syncedFarmerRecordIds
+        dfr-module-farmer-registry-002-dfr-module-farmer-registry-002: 2.1.1. getFarmerRecordForDeDupe(farmerId)
+        dfr-module-farmer-registry-002--dfr-module-farmer-registry-002: farmerDataToCompare
+        
+        dfr-module-farmer-registry-002-dfr-module-farmer-registry-002: 2.1.2. findPotentialDuplicates(farmerDataToCompare, configuredRules)
+        note over dfr-module-farmer-registry-002: REQ-FHR-013: De-duplication checks are performed post-sync. The Farmer Registry Engine uses configured rules (e.g., National ID, fuzzy matching on name/DOB/village as per REQ-FHR-012, REQ-FHR-014).
+        dfr-module-farmer-registry-002--dfr-module-farmer-registry-002: listOfPotentialDuplicates
+
+        alt listOfPotentialDuplicates is not empty
+            dfr-module-farmer-registry-002-dfr-module-farmer-registry-002: 2.1.3.1. updateFarmerStatus(farmerId, 'Potential Duplicate')
+            dfr-module-farmer-registry-002--dfr-module-farmer-registry-002: statusUpdateSuccess
+            
+            dfr-module-farmer-registry-002-dfr-module-admin-settings-005: 2.1.3.2. Notify: RecordFlaggedForReviewEvent(farmerId, listOfPotentialDuplicates)
+            activate dfr-module-admin-settings-005
+            note right of dfr-module-admin-settings-005: REQ-FHR-015: Flagged records (status 'Potential Duplicate') become available in an admin review queue/view, typically presented via the DFR Admin Settings Panel or a dedicated view.
+            deactivate dfr-module-admin-settings-005
+
+        else listOfPotentialDuplicates is empty
+            dfr-module-farmer-registry-002-dfr-module-farmer-registry-002: 2.1.4.1. updateFarmerStatus(farmerId, 'Active/Verified')
+            dfr-module-farmer-registry-002--dfr-module-farmer-registry-002: statusUpdateSuccess
+        end
+    end
+
+    dfr-module-farmer-registry-002--dfr-module-rest-api-008: batchDeDuplicationOutcome
+    deactivate dfr-module-farmer-registry-002
+
+    dfr-module-rest-api-008-dfr-module-rest-api-008: 3. End activation for this API request flow
+    deactivate dfr-module-rest-api-008
+
+    note over dfr-module-rest-api-008,dfr-module-admin-settings-005: All Odoo module interactions (REST API, Farmer Registry, Admin Settings) occur within the Odoo Application Server (dfr-infra-odoo-app-container-019).

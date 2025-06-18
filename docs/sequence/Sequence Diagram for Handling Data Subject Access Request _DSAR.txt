@@ -1,0 +1,66 @@
+sequenceDiagram
+    actor Farmer as Farmer
+    actor Administrator as Administrator
+    participant "DFR Admin Portal" as dfrinfraodooappcontainer019
+    participant "DSAR Log Service" as dfrmoduleadminsettings005
+    participant "Farmer Registry Module" as dfrmodulefarmerregistry002
+    participant "Dynamic Form Module" as dfrmoduledynamicforms003
+    participant "Data Export Service" as dfrmoduledatamanagementtools010
+
+    note over Farmer, dfrmoduledatamanagementtools010: DSAR Process initiated as per REQ-SADG-008, REQ-SADG-009.
+
+    Farmer-Administrator: 1. Submits Data Subject Access Request (DSAR) (e.g., via email, official channel)
+    activate Administrator
+
+    Administrator-dfrinfraodooappcontainer019: 2. Logs into DFR Admin Portal and navigates to DSAR section
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019--Administrator: DSAR Management UI Displayed
+
+    Administrator-dfrinfraodooappcontainer019: 3. Inputs farmer's identifying information and DSAR details
+    dfrinfraodooappcontainer019-dfrmoduleadminsettings005: 3.1. LogNewDSARRequest(farmerInfo, requestDetails, requestTimestamp)
+    activate dfrmoduleadminsettings005
+    note over dfrmoduleadminsettings005: Administrator logs all steps of the DSAR process for audit trail as per REQ-SADG-005.
+    dfrmoduleadminsettings005--dfrinfraodooappcontainer019: DSARRequestID, LogConfirmation
+    deactivate dfrmoduleadminsettings005
+    dfrinfraodooappcontainer019--Administrator: 
+
+    note right of dfrinfraodooappcontainer019: Identity verification may involve out-of-band communication or specific system checks based on PII provided by the farmer.
+    Administrator-dfrinfraodooappcontainer019: 4. Initiates Farmer Identity Verification
+    dfrinfraodooappcontainer019-dfrmodulefarmerregistry002: 4.1. VerifyFarmerIdentity(submittedPII)
+    activate dfrmodulefarmerregistry002
+    dfrmodulefarmerregistry002--dfrinfraodooappcontainer019: VerificationResult {status: 'Success'/'Failure', verifiedFarmerID?: string, reason?: string}
+    deactivate dfrmodulefarmerregistry002
+    dfrinfraodooappcontainer019--Administrator: Verification Process Outcome
+
+    alt 5.1 [VerificationResult.status == 'Success']
+        dfrinfraodooappcontainer019-dfrmodulefarmerregistry002: 5.1.1. GetFarmerProfile(verifiedFarmerID)
+        activate dfrmodulefarmerregistry002
+        dfrmodulefarmerregistry002--dfrinfraodooappcontainer019: FarmerProfileData (Core Fields, Household, Plot Info)
+        deactivate dfrmodulefarmerregistry002
+        dfrinfraodooappcontainer019-dfrmoduledynamicforms003: 5.1.2. GetFarmerFormSubmissions(verifiedFarmerID)
+        activate dfrmoduledynamicforms003
+        dfrmoduledynamicforms003--dfrinfraodooappcontainer019: FormSubmissionsData (List of submissions with responses)
+        deactivate dfrmoduledynamicforms003
+        dfrinfraodooappcontainer019-dfrmoduledatamanagementtools010: 5.1.3. CompileDataForExport(farmerProfileData, formSubmissionsData, format: 'CSV/XLSX/PDF')
+        activate dfrmoduledatamanagementtools010
+        note right of dfrmoduledatamanagementtools010: Data export format (CSV/XLSX/PDF) selected by Administrator as per REQ-DM-001, REQ-DM-004.
+        dfrmoduledatamanagementtools010--dfrinfraodooappcontainer019: CompiledDataFile (link or stream)
+        deactivate dfrmoduledatamanagementtools010
+        dfrinfraodooappcontainer019--Administrator: 5.1.4. Presents CompiledDataFile for review and secure provision
+        Administrator-Farmer: 5.1.5. Provides Compiled Data Securely (e.g., encrypted email, secure download link)
+        note over Farmer, Administrator: Secure provision of data to the farmer is critical and may involve encrypted email, secure download portal, or other agreed-upon secure channels.
+        dfrinfraodooappcontainer019-dfrmoduleadminsettings005: 5.1.6. UpdateDSARLog(DSARRequestID, status='Completed', notes='Data provided to farmer', completionTimestamp)
+        activate dfrmoduleadminsettings005
+        dfrmoduleadminsettings005--dfrinfraodooappcontainer019: LogUpdateConfirmation
+        deactivate dfrmoduleadminsettings005
+    else 5.2 [VerificationResult.status == 'Failure']
+        dfrinfraodooappcontainer019-dfrmoduleadminsettings005: 5.2.1. UpdateDSARLog(DSARRequestID, status='Failed', notes=VerificationResult.reason, failureTimestamp)
+        activate dfrmoduleadminsettings005
+        dfrmoduleadminsettings005--dfrinfraodooappcontainer019: LogUpdateConfirmation
+        deactivate dfrmoduleadminsettings005
+        dfrinfraodooappcontainer019--Administrator: 5.2.2. Notifies: Identity Verification Failed (reason: VerificationResult.reason)
+        Administrator-Farmer: 5.2.3. Informs Farmer of Identity Verification Failure and next steps
+    end
+
+    deactivate dfrinfraodooappcontainer019
+    deactivate Administrator

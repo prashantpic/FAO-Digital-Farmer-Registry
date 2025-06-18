@@ -1,0 +1,82 @@
+sequenceDiagram
+    actor "User (IT Admin/National Admin)" as USERACTOR
+    participant "Odoo App Server" as dfrinfraodooappcontainer019
+    participant "Data Migration Toolkit" as dfrmoduledatamanagementtools010
+    participant "Farmer Registry Engine" as dfrmodulefarmerregistry002
+    participant "PostgreSQL Database" as dfrinfrapostgresdbcontainer020
+
+    note over USERACTOR: User prepares legacy data in CSV/XLSX format offline before starting this sequence.
+
+    USERACTOR-dfrinfraodooappcontainer019: 1. Accesses Data Migration Tool UI (REQ-DM-001)
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019-dfrmoduledatamanagementtools010: 1.0.1. RenderMigrationToolView()
+    activate dfrmoduledatamanagementtools010
+    dfrmoduledatamanagementtools010--dfrinfraodooappcontainer019: 1.0.2. MigrationToolViewPage
+    deactivate dfrmoduledatamanagementtools010
+    dfrinfraodooappcontainer019--USERACTOR: 1.1. Displays Migration Tool UI
+    deactivate dfrinfraodooappcontainer019
+
+    USERACTOR-dfrinfraodooappcontainer019: 2. Uploads CSV/XLSX File & Submits Field Mappings (REQ-DM-003)
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019-dfrmoduledatamanagementtools010: 2.1. HandleFileUploadAndMapping(file, mappings)
+    activate dfrmoduledatamanagementtools010
+    dfrmoduledatamanagementtools010--dfrinfraodooappcontainer019: 2.1.1. AckUploadAndStartProcessing() / ValidationErrorsInConfig()
+    dfrinfraodooappcontainer019--USERACTOR: 2.2. Displays 'Processing started...' or Config Errors
+    deactivate dfrinfraodooappcontainer019
+
+    note over dfrmoduledatamanagementtools010: The InitiateImportJob (Step 3) might be handled as an asynchronous Odoo background job/action for large files to prevent UI timeouts. The diagram shows the logical flow of processing.
+    dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 3. InitiateImportJob(filedata, mappings)
+
+    loop For each row in filedata
+        dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 3.1.1. mappeddata = ApplyFieldMapping(rowdata, mappings)
+        dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 3.1.2. PerformInitialValidation(mappeddata) (REQ-DM-002, REQ-DM-005)
+        activate dfrmoduledatamanagementtools010
+        dfrmoduledatamanagementtools010--dfrmoduledatamanagementtools010: 3.1.2.1. initialValidationStatus
+        deactivate dfrmoduledatamanagementtools010
+
+        alt If InitialValidationFails
+            dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 3.1.3.1. LogErrorForRow(rowdata, validationerror) (REQ-DM-006)
+        else Else (InitialValidationSucceeds)
+            dfrmoduledatamanagementtools010-dfrmodulefarmerregistry002: 3.1.4.1. ImportFarmerRecord(mappeddata) (REQ-DM-004)
+            activate dfrmodulefarmerregistry002
+            dfrmodulefarmerregistry002-dfrmodulefarmerregistry002: 3.1.4.2. ValidateAndCreateFarmerData(mappeddata) (Incl. De-dupe REQ-FHR-012)
+            activate dfrmodulefarmerregistry002
+            dfrmodulefarmerregistry002--dfrmodulefarmerregistry002: 3.1.4.2.1. farmerRegistryValidationStatus
+            deactivate dfrmodulefarmerregistry002
+
+            alt If FarmerRegistryValidationFails
+                %% This block represents the alternative path where no further action is taken before returning an error status %%
+            else Else (FarmerRegistryValidationSucceeds)
+                note over dfrmodulefarmerregistry002: Household and Plot records are created by Farmer Registry Engine as applicable, based on mapped data. This is simplified in step 3.1.4.5 to 'SaveFarmerRecord' but implies saving related entities.
+                dfrmodulefarmerregistry002-dfrinfrapostgresdbcontainer020: 3.1.4.5. SaveFarmerRecord(validatedfarmerdata)
+                activate dfrinfrapostgresdbcontainer020
+                dfrinfrapostgresdbcontainer020--dfrmodulefarmerregistry002: 3.1.4.6. ConfirmSave()
+                deactivate dfrinfrapostgresdbcontainer020
+            end
+
+            dfrmodulefarmerregistry002--dfrmoduledatamanagementtools010: 3.1.4.8. ImportStatus (Success/FarmerUID or Error)
+            deactivate dfrmodulefarmerregistry002
+
+            alt If ImportStatus is Error
+                dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 3.1.4.9.1. LogErrorForRow(rowdata, farmerregistryerror)
+            else Else (ImportStatus is Success)
+                dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 3.1.4.10.1. LogSuccessForRow(rowdata, farmeruid)
+            end
+        end
+    end
+
+    dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 4. FinalizeImportJob()
+    dfrmoduledatamanagementtools010-dfrmoduledatamanagementtools010: 5. GenerateErrorReportAndSummary(logs) (REQ-DM-006, REQ-DM-010)
+    activate dfrmoduledatamanagementtools010
+    dfrmoduledatamanagementtools010--dfrmoduledatamanagementtools010: 5.1. reportdetails
+    deactivate dfrmoduledatamanagementtools010
+
+    dfrmoduledatamanagementtools010-dfrinfraodooappcontainer019: 6. NotifyJobCompletion(jobid, reportdetailsurlorsummary)
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019-USERACTOR: 6.1. [Display Import Job Completion Notification and Report Access]
+    dfrinfraodooappcontainer019--dfrmoduledatamanagementtools010: 6.2. Displays "Import Job Completed. View Report."
+    deactivate dfrinfraodooappcontainer019
+
+    deactivate dfrmoduledatamanagementtools010
+
+    note over USER_ACTOR: Post-migration validation and reconciliation (REQ-DM-011) are performed by the User after this sequence, using the generated reports and system UI.

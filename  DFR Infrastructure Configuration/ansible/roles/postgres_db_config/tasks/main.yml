@@ -1,0 +1,36 @@
+---
+- name: Create PostgreSQL data directory on host
+  ansible.builtin.file:
+    path: "{{ postgres_data_path | default('/opt/postgres/data') }}"
+    state: directory
+    owner: "{{ postgres_host_user | default(999) }}"  # Often 'postgres' user or UID like 999 (for Alpine images) or 70 (for Debian images)
+    group: "{{ postgres_host_group | default(999) }}" # Check official image for correct UID/GID
+    mode: '0700' # PostgreSQL data directory needs to be restrictive
+  become: true
+
+- name: Pull PostgreSQL Docker image
+  community.docker.docker_image:
+    name: "{{ postgres_image_name | default('postgres') }}"
+    tag: "{{ postgres_image_tag | default('15-alpine') }}"
+    source: pull
+  become: true
+
+- name: Run PostgreSQL Docker container
+  community.docker.docker_container:
+    name: "{{ postgres_container_name | default('dfr_postgres_db') }}"
+    image: "{{ postgres_image_name | default('postgres') }}:{{ postgres_image_tag | default('15-alpine') }}"
+    state: started
+    restart_policy: always
+    ports: "{{ postgres_ports | default(['5432:5432']) }}"
+    volumes:
+      - "{{ postgres_data_path | default('/opt/postgres/data') }}:/var/lib/postgresql/data"
+      # - "{{ postgres_config_path | default('/opt/postgres/config/postgresql.conf') }}:/etc/postgresql/postgresql.conf" # Optional: mount custom postgresql.conf
+      # - "{{ postgres_initdb_scripts_path | default('/opt/postgres/initdb') }}:/docker-entrypoint-initdb.d" # Optional: mount custom init scripts
+    env: "{{ postgres_env_vars }}"
+    # postgres_env_vars must be defined, example:
+    # postgres_env_vars:
+    #   POSTGRES_USER: "{{ db_user | default('odoo') }}"
+    #   POSTGRES_PASSWORD: "{{ db_password }}" # This MUST come from vault or secure source
+    #   POSTGRES_DB: "{{ db_name | default('odoodb') }}"
+    #   PGDATA: /var/lib/postgresql/data/pgdata # Recommended if custom PGDATA inside volume is needed
+  become: true # Docker daemon usually runs as root

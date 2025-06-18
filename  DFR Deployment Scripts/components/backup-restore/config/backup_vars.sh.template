@@ -1,0 +1,70 @@
+#!/bin/bash
+# DFR Backup/Restore Configuration Template for {{ENVIRONMENT_NAME}}
+
+# Database Connection
+# Hostname or IP address of the PostgreSQL server
+DFR_DB_HOST="{{DB_HOST_PLACEHOLDER}}"
+# Port number of the PostgreSQL server
+DFR_DB_PORT="{{DB_PORT_PLACEHOLDER | default(5432)}}"
+# PostgreSQL user for connecting to the database
+DFR_DB_USER="{{DB_USER_PLACEHOLDER}}"
+# Name of the DFR database
+DFR_DB_NAME="{{DB_NAME_PLACEHOLDER}}"
+
+# Password Management:
+# Option 1: Path to a file containing the password. This is generally more secure.
+# The file should have appropriate permissions (e.g., readable only by the backup user).
+# Example content for .pgpass file (ensure correct permissions 0600): hostname:port:database:username:password
+# If using a simple password file, ensure it only contains the password.
+DFR_DB_PASSWORD_FILE="{{DB_PASSWORD_FILE_PLACEHOLDER}}"
+# Option 2: Directly specify the password (less secure, use with caution, e.g., for dev from .env).
+# DFR_DB_PASSWORD="{{DB_PASSWORD_PLACEHOLDER}}"
+
+# Backup Configuration
+# Base directory where backups will be stored. A timestamped subdirectory will be created here.
+BACKUP_DIR="/var/backups/dfr/{{COUNTRY_CODE | default('na')}}/{{ENVIRONMENT_NAME}}"
+# Full path to the Odoo filestore directory associated with the DFR_DB_NAME.
+# This is typically located within Odoo's data_dir.
+ODOO_FILESTORE_PATH="/var/lib/odoo/filestore/${DFR_DB_NAME}" # Adjust if your data_dir or filestore structure differs
+# Backup method: "pg_dump" or "pg_basebackup".
+# pg_dump creates logical backups. pg_basebackup creates physical backups (more complex restore, good for PITR).
+BACKUP_METHOD="pg_dump"
+# Format for pg_dump: "c" (custom - recommended, allows pg_restore flexibility), "p" (plain SQL), "t" (tar).
+PG_DUMP_FORMAT="c"
+# Compress the backup file: "true" or "false".
+# If BACKUP_METHOD is pg_dump and PG_DUMP_FORMAT is "p" or "t", this script will compress using gzip.
+# If PG_DUMP_FORMAT is "c", pg_dump handles compression internally if available, otherwise this script does not re-compress.
+# For pg_basebackup, compression is typically handled by 'tar' if format is 'tar' or specified via options.
+COMPRESS_BACKUP="true"
+
+# Retention Policy (example for daily, weekly, monthly - adjust logic in backup_db.sh accordingly)
+# Number of daily backups to keep.
+RETENTION_DAYS_DAILY="7"
+# Number of weekly backups to keep (e.g., the last backup of each of the past N weeks).
+RETENTION_WEEKS_WEEKLY="4"
+# Number of monthly backups to keep (e.g., the last backup of each of the past N months).
+RETENTION_MONTHS_MONTHLY="6"
+# A simpler approach used in the provided backup_db.sh template is a single RETENTION_DAYS.
+# If you use the simpler RETENTION_DAYS, set it here:
+RETENTION_DAYS="7"
+
+
+# Docker Service Names (used by restore_db.sh to stop/start services via docker-compose)
+# Name of the Odoo service in your docker-compose.yml file.
+ODOO_SERVICE_NAME="odoo"
+# Name of the PostgreSQL service in your docker-compose.yml file.
+POSTGRES_SERVICE_NAME="postgres"
+
+# S3/Cloud Storage (Optional - for uploading backups to cloud storage)
+# Uncomment and configure if you plan to upload backups to S3 or a similar service.
+# S3_BUCKET_NAME="s3://your-dfr-backups-bucket/{{COUNTRY_CODE | default('na')}}/{{ENVIRONMENT_NAME}}"
+# AWS CLI Profile name to use for S3 operations (if not using instance roles or default credentials).
+# AWS_PROFILE_NAME="dfr_backup_profile"
+# Path to AWS CLI executable if not in standard PATH
+# AWS_CLI_PATH="/usr/local/bin/aws"
+
+# GPG Encryption (Optional - for encrypting backups)
+# Uncomment and configure if you plan to encrypt backups using GPG.
+# GPG_RECIPIENT_EMAIL="your_gpg_recipient_email@example.com"
+# Path to GPG executable if not in standard PATH
+# GPG_CLI_PATH="/usr/bin/gpg"

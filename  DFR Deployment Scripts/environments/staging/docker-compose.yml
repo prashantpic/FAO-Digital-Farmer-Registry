@@ -1,0 +1,150 @@
+version: '3.8'
+
+# This file typically extends environments/common/docker-compose.common.yml
+# Ensure common networks and any default service configurations are defined there.
+# Example command:
+# docker-compose -f ../common/docker-compose.common.yml -f docker-compose.yml --env-file .env.staging up -d
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE_NAME}:${POSTGRES_IMAGE_TAG} # e.g., dfr_postgres_db:16-alpine-v1.0 or official postgres:16-alpine
+    container_name: dfr_postgres_staging
+    volumes:
+      - dfr_postgres_data_staging:/var/lib/postgresql/data
+      # Init scripts should be baked into the custom image for staging/prod
+    environment:
+      - POSTGRES_USER=${DFR_DB_USER}
+      - POSTGRES_PASSWORD=${DFR_DB_PASSWORD} # Loaded from .env.staging (secret)
+      - POSTGRES_DB=${DFR_DB_NAME}
+      # PGDATA: /var/lib/postgresql/data/pgdata # Default in postgres image, ensure volume matches
+    ports:
+      # For staging, generally avoid exposing DB ports directly to the host's public interface.
+      # If access is needed, bind to localhost or use bastion/VPN: "127.0.0.1:5434:5432"
+      # Or rely on internal network access from other containers.
+      # - "${DFR_DB_EXTERNAL_PORT_STAGING}:5432" # Example, use with caution
+    networks:
+      - dfr_internal_network # From common or defined below
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy: # Optional: Define resource limits for staging if needed
+      resources:
+        limits:
+          cpus: '${POSTGRES_CPU_LIMIT:-1.0}'
+          memory: '${POSTGRES_MEM_LIMIT:-2G}'
+        reservations:
+          cpus: '${POSTGRES_CPU_RESERVATION:-0.5}'
+          memory: '${POSTGRES_MEM_RESERVATION:-1G}'
+
+  odoo:
+    image: ${ODOO_IMAGE_NAME}:${ODOO_IMAGE_TAG} # e.g., dfr_odoo_app:staging-v1.2.3
+    container_name: dfr_odoo_staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # For staging, addons are part of the image. Only filestore data is mounted.
+      - dfr_odoo_data_staging:/var/lib/odoo
+    environment:
+      - ODOO_DB_HOST=postgres
+      - ODOO_DB_PORT=5432
+      - ODOO_DB_USER=${DFR_DB_USER}
+      - ODOO_DB_PASSWORD=${DFR_DB_PASSWORD} # Loaded from .env.staging (secret)
+      - ODOO_DB_NAME=${DFR_DB_NAME}
+      - ODOO_ADMIN_PASSWD=${ODOO_MASTER_PASSWORD} # Loaded from .env.staging (secret)
+      - ODOO_LOAD_DEMO_DATA=false # Never load demo data in staging/production
+      - ODOO_WORKERS=${ODOO_WORKERS_STAGING:-2} # Number of Odoo HTTP workers
+      - ODOO_LOG_LEVEL=${ODOO_LOG_LEVEL_STAGING:-info}
+      - ODOO_PROXY_MODE=True
+      - ODOO_LIST_DB=False # Crucial for staging/production security
+      - ODOO_LIMIT_TIME_CPU=${ODOO_LIMIT_TIME_CPU:-600}
+      - ODOO_LIMIT_TIME_REAL=${ODOO_LIMIT_TIME_REAL:-1200}
+      # - ODOO_AUTO_INIT_DB=false # Usually manual or CI step for staging/prod
+      # - ODOO_AUTO_UPDATE_MODULES=false
+    ports:
+      # Odoo ports are typically not exposed directly on the host in staging/prod.
+      # Nginx handles external access.
+      # If direct access is needed for specific testing, bind to localhost:
+      # - "127.0.0.1:9069:8069"
+      # - "127.0.0.1:9072:8072"
+    networks:
+      - dfr_internal_network
+    restart: unless-stopped
+    deploy: # Optional: Define resource limits
+      resources:
+        limits:
+          cpus: '${ODOO_CPU_LIMIT:-2.0}'
+          memory: '${ODOO_MEM_LIMIT:-4G}'
+        reservations:
+          cpus: '${ODOO_CPU_RESERVATION:-1.0}'
+          memory: '${ODOO_MEM_RESERVATION:-2G}'
+
+  nginx:
+    image: ${NGINX_IMAGE_NAME}:${NGINX_IMAGE_TAG} # e.g., dfr_nginx_proxy:staging-v1.1.0
+    container_name: dfr_nginx_staging
+    depends_on:
+      - odoo
+    ports:
+      # Expose standard HTTP/HTTPS ports to the host.
+      - "${NGINX_HTTP_PORT_STAGING:-80}:80"
+      - "${NGINX_HTTPS_PORT_STAGING:-443}:443"
+    volumes:
+      # SSL certificates and keys must be securely provisioned on the host
+      # and mounted into the Nginx container.
+      # Path on host: /etc/letsencrypt/live/${NGINX_SERVER_NAME_STAGING}/fullchain.pem (example)
+      - ${SSL_CERT_PATH_STAGING}:/etc/nginx/ssl/${SSL_CERTIFICATE_FILE_STAGING}:ro
+      - ${SSL_KEY_PATH_STAGING}:/etc/nginx/ssl/${SSL_CERTIFICATE_KEY_FILE_STAGING}:ro
+      # Optional: Mount custom DH params file
+      # - ${SSL_DHPARAM_PATH_STAGING}:/etc/nginx/ssl/dhparam.pem:ro
+      # Nginx configuration templates should be part of the image, entrypoint substitutes vars.
+    environment:
+      # Variables for nginx_entrypoint.sh
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME_STAGING} # e.g., staging.dfr.example.country
+      - ODOO_APP_SERVICE_HOST=odoo
+      - ODOO_APP_SERVICE_PORT=8069
+      - ODOO_LONGPOLLING_PORT=8072
+      - SSL_CERTIFICATE_FILE=${SSL_CERTIFICATE_FILE_STAGING} # e.g., fullchain.pem
+      - SSL_CERTIFICATE_KEY_FILE=${SSL_CERTIFICATE_KEY_FILE_STAGING} # e.g., privkey.pem
+      # Variables for main nginx.conf.template
+      - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES_STAGING:-auto}
+      - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS_STAGING:-1024}
+      # Variables for dfr.conf.template (timeouts etc.)
+      - NGINX_PROXY_READ_TIMEOUT=${NGINX_PROXY_READ_TIMEOUT_STAGING:-720s}
+      - NGINX_PROXY_CONNECT_TIMEOUT=${NGINX_PROXY_CONNECT_TIMEOUT_STAGING:-300s}
+      - NGINX_PROXY_SEND_TIMEOUT=${NGINX_PROXY_SEND_TIMEOUT_STAGING:-300s}
+    networks:
+      - dfr_internal_network
+    restart: unless-stopped
+    deploy: # Optional: Define resource limits
+      resources:
+        limits:
+          cpus: '${NGINX_CPU_LIMIT:-0.5}'
+          memory: '${NGINX_MEM_LIMIT:-256M}'
+        reservations:
+          cpus: '${NGINX_CPU_RESERVATION:-0.25}'
+          memory: '${NGINX_MEM_RESERVATION:-128M}'
+
+volumes:
+  dfr_postgres_data_staging:
+    # For staging, consider if external volumes (e.g., cloud provider block storage)
+    # are more appropriate than local Docker volumes, depending on the host setup.
+    driver: local # Or specific driver like 'local-persist' or cloud provider volume plugin
+    # driver_opts: # Example for local-persist
+    #   mountpoint: /data/dfr_staging/postgres
+  dfr_odoo_data_staging:
+    driver: local
+    # driver_opts:
+    #   mountpoint: /data/dfr_staging/odoo
+
+networks:
+  dfr_internal_network:
+    # Ensure this network is defined, possibly in environments/common/docker-compose.common.yml
+    # If defined in common as external:
+    # name: dfr_internal_network
+    # external: true
+    # If defined locally for this environment:
+    driver: bridge
+    name: dfr_staging_internal_network

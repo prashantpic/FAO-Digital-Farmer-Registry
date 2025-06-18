@@ -1,0 +1,231 @@
+<odoo>
+    <data noupdate="1"> <!-- noupdate="1" for system automations -->
+
+        <!-- Server Action: Farmer Activated -->
+        <record id="action_server_farmer_activated" model="ir.actions.server">
+            <field name="name">Server Action: Farmer Activated</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record:
+    env['workflow.log'].log_event(
+        workflow_name='Farmer Lifecycle',
+        message=f"Farmer {record.name} (UID: {getattr(record, 'farmer_uid', 'N/A')}) activated. Status changed to '{record.status}'.",
+        level='info',
+        record=record
+    )
+    notification_template_id_str = env['orchestration.rule.config'].get_config_value(
+       'farmer_status_change', 
+       'active_status_notification_template_id'
+    )
+    if notification_template_id_str:
+       try:
+           notification_template_id = int(notification_template_id_str)
+           # Assuming dfr_notifications_engine has a method 'trigger_notification'
+           # env['dfr.notification.engine'].trigger_notification(
+           #    record, # The farmer record
+           #    notification_template_id, 
+           #    {'farmer_name': record.name, 'farmer_uid': getattr(record, 'farmer_uid', 'N/A')}
+           # )
+           env['workflow.log'].log_event(
+               workflow_name='Farmer Lifecycle',
+               message=f"Attempted to trigger 'Farmer Activated' notification using template ID {notification_template_id_str} for farmer {record.name}.",
+               level='debug', # Change to info if notification sending is confirmed
+               record=record
+           )
+       except ValueError:
+           env['workflow.log'].log_event(
+               workflow_name='Farmer Lifecycle',
+               message=f"Invalid notification template ID configured for farmer activation: {notification_template_id_str}",
+               level='error',
+               record=record
+           )
+       except Exception as e:
+           env['workflow.log'].log_event(
+               workflow_name='Farmer Lifecycle',
+               message=f"Error triggering 'Farmer Activated' notification for {record.name}: {str(e)}",
+               level='error',
+               record=record
+           )
+            </field>
+        </record>
+
+        <!-- Automated Action: On Farmer Activation -->
+        <record id="automation_farmer_activated" model="base.automation">
+            <field name="name">Automated: Farmer Activation Process</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('status', '=', 'active')]</field>
+            <field name="filter_pre_domain">[('status', '!=', 'active')]</field> 
+            <field name="action_server_id" ref="action_server_farmer_activated"/>
+        </record>
+
+        <!-- Server Action: Farmer Deactivated -->
+        <record id="action_server_farmer_deactivated" model="ir.actions.server">
+            <field name="name">Server Action: Farmer Deactivated</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record:
+    env['workflow.log'].log_event(
+        workflow_name='Farmer Lifecycle',
+        message=f"Farmer {record.name} (UID: {getattr(record, 'farmer_uid', 'N/A')}) deactivated. Status changed to '{record.status}'.",
+        level='info',
+        record=record
+    )
+    notification_template_id_str = env['orchestration.rule.config'].get_config_value(
+       'farmer_status_change', 
+       'inactive_status_notification_template_id'
+    )
+    if notification_template_id_str:
+       try:
+           notification_template_id = int(notification_template_id_str)
+           # env['dfr.notification.engine'].trigger_notification(
+           #    record,
+           #    notification_template_id, 
+           #    {'farmer_name': record.name, 'farmer_uid': getattr(record, 'farmer_uid', 'N/A')}
+           # )
+           env['workflow.log'].log_event(
+               workflow_name='Farmer Lifecycle',
+               message=f"Attempted to trigger 'Farmer Deactivated' notification using template ID {notification_template_id_str} for farmer {record.name}.",
+               level='debug',
+               record=record
+           )
+       except ValueError:
+           env['workflow.log'].log_event(
+               workflow_name='Farmer Lifecycle',
+               message=f"Invalid notification template ID configured for farmer deactivation: {notification_template_id_str}",
+               level='error',
+               record=record
+           )
+       except Exception as e:
+           env['workflow.log'].log_event(
+               workflow_name='Farmer Lifecycle',
+               message=f"Error triggering 'Farmer Deactivated' notification for {record.name}: {str(e)}",
+               level='error',
+               record=record
+           )
+            </field>
+        </record>
+
+        <!-- Automated Action: On Farmer Deactivation -->
+        <record id="automation_farmer_deactivated" model="base.automation">
+            <field name="name">Automated: Farmer Deactivation Process</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('status', '=', 'inactive')]</field>
+            <field name="filter_pre_domain">[('status', '!=', 'inactive')]</field>
+            <field name="action_server_id" ref="action_server_farmer_deactivated"/>
+        </record>
+
+        <!-- Server Action: Farmer Deceased -->
+        <record id="action_server_farmer_deceased" model="ir.actions.server">
+            <field name="name">Server Action: Farmer Deceased</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record:
+    env['workflow.log'].log_event(
+        workflow_name='Farmer Lifecycle',
+        message=f"Farmer {record.name} (UID: {getattr(record, 'farmer_uid', 'N/A')}) marked as deceased. Status changed to '{record.status}'.",
+        level='info',
+        record=record
+    )
+    # Set an is_archived flag if it exists (example: active=False if it serves this purpose)
+    if hasattr(record, 'active'):
+        record.write({'active': False}) 
+        env['workflow.log'].log_event(
+            workflow_name='Farmer Lifecycle',
+            message=f"Farmer {record.name} automatically archived due to deceased status.",
+            level='info',
+            record=record
+        )
+    
+    # Create follow-up activity for admin
+    activity_type_id = env.ref('mail.mail_activity_data_todo').id
+    admin_user_id = env.ref('base.user_admin').id # Default to admin, configure if needed
+    
+    config_admin_user_id_str = env['orchestration.rule.config'].get_config_value(
+        'farmer_status_change', 
+        'deceased_review_user_id',
+    )
+    if config_admin_user_id_str:
+        try:
+            admin_user_id = int(config_admin_user_id_str)
+        except ValueError:
+            env['workflow.log'].log_event(
+                workflow_name='Farmer Lifecycle',
+                message=f"Invalid user ID '{config_admin_user_id_str}' for deceased farmer review. Defaulting to admin.",
+                level='warning',
+                record=record
+            )
+
+    env['mail.activity'].create({
+        'activity_type_id': activity_type_id,
+        'summary': f'Review data for deceased farmer: {record.name}',
+        'note': f"Farmer {record.name} (UID: {getattr(record, 'farmer_uid', 'N/A')}) has been marked as deceased. Please review associated household, plot, and other data for necessary actions (e.g., archiving, succession planning).",
+        'res_id': record.id,
+        'res_model_id': env['ir.model']._get(record._name).id,
+        'user_id': admin_user_id
+    })
+            </field>
+        </record>
+
+        <!-- Automated Action: On Farmer Deceased -->
+        <record id="automation_farmer_deceased" model="base.automation">
+            <field name="name">Automated: Farmer Deceased Process</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('status', '=', 'deceased')]</field>
+            <field name="filter_pre_domain">[('status', '!=', 'deceased')]</field>
+            <field name="action_server_id" ref="action_server_farmer_deceased"/>
+        </record>
+
+        <!-- Server Action: Farmer Marked as Duplicate -->
+        <record id="action_server_farmer_marked_duplicate" model="ir.actions.server">
+            <field name="name">Server Action: Farmer Marked as Duplicate</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record:
+    env['workflow.log'].log_event(
+        workflow_name='Farmer Lifecycle',
+        message=f"Farmer {record.name} (UID: {getattr(record, 'farmer_uid', 'N/A')}) marked as duplicate. Status changed to '{record.status}'.",
+        level='info',
+        record=record
+    )
+    # Ensure the record is archived or otherwise removed from active lists
+    if hasattr(record, 'active'):
+        record.write({'active': False})
+        env['workflow.log'].log_event(
+            workflow_name='Farmer Lifecycle',
+            message=f"Farmer {record.name} automatically archived due to duplicate status.",
+            level='info',
+            record=record
+        )
+            </field>
+        </record>
+
+        <!-- Automated Action: On Farmer Marked as Duplicate -->
+        <record id="automation_farmer_marked_duplicate" model="base.automation">
+            <field name="name">Automated: Farmer Marked Duplicate Process</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('status', '=', 'duplicate')]</field>
+            <field name="filter_pre_domain">[('status', '!=', 'duplicate')]</field>
+            <field name="action_server_id" ref="action_server_farmer_marked_duplicate"/>
+        </record>
+
+        <!-- Automated Action: On Farmer Approval (Pending Verification to Active) -->
+        <!-- This reuses the action_server_farmer_activated -->
+        <record id="automation_farmer_approved_from_pending" model="base.automation">
+            <field name="name">Automated: Farmer Approved (Pending Verification to Active)</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('status', '=', 'active')]</field>
+            <field name="filter_pre_domain">[('status', '=', 'pending_verification')]</field>
+            <field name="action_server_id" ref="action_server_farmer_activated"/>
+        </record>
+
+    </data>
+</odoo>

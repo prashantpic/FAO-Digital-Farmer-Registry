@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1"> <!-- noupdate="1" ensures these rules are not overwritten on module update unless explicitly specified -->
+        <!--
+            Menu item access is primarily controlled by the 'groups' attribute directly
+            on the <menuitem> definitions in 'views/dfr_main_menus.xml'.
+            This file would typically be used if this module defined new security groups
+            or needed to apply record rules to models defined *within this module*.
+            Since this module is primarily a UI aggregator and uses groups from dfr_rbac_config,
+            this file might be minimal or only contain comments explaining this.
+
+            Example of restricting a menu defined in this module to a specific group,
+            if not done directly in the menu XML (though direct is preferred for menus):
+
+            <record id="menu_dfr_root" model="ir.ui.menu">
+                <field name="groups_id" eval="[(6, 0, [ref('dfr_rbac_config.group_dfr_user')])]"/>
+            </record>
+
+            However, it's generally better practice to put the `groups` attribute directly on the
+            <menuitem> tag in the menu XML file itself for clarity.
+            This file would be more relevant if this master UI module introduced its own specific
+            models that needed record rules.
+        -->
+
+        <!-- This file might be empty if all menu access is handled directly in dfr_main_menus.xml -->
+        <!-- Ensuring the DFR Root Menu is visible to the base DFR user group -->
+        <!-- This is usually done on the menuitem itself, but can be reinforced here -->
+        <!--
+        <record model="ir.ui.menu" id="menu_dfr_root">
+            <field name="groups_id" eval="[(4, ref('dfr_rbac_config.group_dfr_user'))]"/>
+        </record>
+        -->
+    </data>
+</odoo>

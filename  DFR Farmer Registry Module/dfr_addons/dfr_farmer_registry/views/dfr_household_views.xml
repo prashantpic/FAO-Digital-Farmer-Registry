@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- DFR Household Views -->
+
+    <!-- Tree View -->
+    <record id="dfr_household_tree" model="ir.ui.view">
+        <field name="name">dfr.household.tree</field>
+        <field name="model">dfr.household</field>
+        <field name="arch" type="xml">
+            <tree string="Households">
+                <field name="uid"/>
+                <field name="name"/>
+                <field name="head_of_household_id"/>
+                <field name="administrative_area_id"/>
+                <field name="status"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="dfr_household_form" model="ir.ui.view">
+        <field name="name">dfr.household.form</field>
+        <field name="model">dfr.household</field>
+        <field name="arch" type="xml">
+            <form string="Household">
+                <header>
+                    <button name="action_set_status_active" type="object" string="Set Active"
+                             attrs="{'invisible': [('status', '=', 'active')]}"/>
+                    <button name="action_set_status_inactive" type="object" string="Set Inactive"
+                             attrs="{'invisible': [('status', '=', 'inactive')]}"/>
+                    <button name="action_set_status_dissolved" type="object" string="Set Dissolved"
+                             attrs="{'invisible': [('status', '=', 'dissolved')]}"/>
+                    <field name="status" widget="statusbar" statusbar_visible="active,inactive,dissolved" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only" string="Household Name"/>
+                        <h1><field name="name" readonly="1" force_save="1"/></h1>
+                         <field name="uid" readonly="1"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="head_of_household_id" options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="administrative_area_id" readonly="1" force_save="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Members" name="members">
+                            <field name="member_ids" context="{'default_household_id': active_id}">
+                                 <tree editable="bottom">
+                                     <field name="farmer_id" options="{'no_create': True, 'no_open': True}" string="Registered Farmer Profile"/>
+                                     <field name="name" attrs="{'column_invisible': [('farmer_id', '!=', False)]}" string="Unregistered Member Name"/>
+                                     <field name="relationship_to_head_id" options="{'no_create': True}"/>
+                                     <field name="role_in_household"/>
+                                     <field name="sex"/>
+                                     <field name="date_of_birth"/>
+                                     <field name="age" readonly="1"/>
+                                     <field name="education_level_id" options="{'no_create': True}"/>
+                                 </tree>
+                            </field>
+                        </page>
+                         <page string="Farms" name="farms">
+                             <field name="farm_ids" context="{'default_household_id': active_id}">
+                                  <tree editable="bottom">
+                                      <field name="name"/>
+                                      <field name="farmer_id" string="Managing Farmer" options="{'no_create': True, 'no_open': True}"/>
+                                      <field name="total_area" readonly="1"/>
+                                      <field name="administrative_area_id" options="{'no_create': True}"/>
+                                  </tree>
+                             </field>
+                         </page>
+                    </notebook>
+                </sheet>
+                 <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="dfr_household_search" model="ir.ui.view">
+        <field name="name">dfr.household.search</field>
+        <field name="model">dfr.household</field>
+        <field name="arch" type="xml">
+            <search string="Search Household">
+                <field name="name" string="Household Name/UID" filter_domain="['|', ('name', 'ilike', self), ('uid', 'ilike', self)]"/>
+                <field name="head_of_household_id"/>
+                <field name="administrative_area_id"/>
+                <field name="status"/>
+                <group expand="0" string="Group By">
+                     <filter string="Status" name="groupby_status" context="{'group_by': 'status'}"/>
+                     <filter string="Administrative Area" name="groupby_administrative_area_id" context="{'group_by': 'administrative_area_id'}"/>
+                     <filter string="Head of Household" name="groupby_head_of_household" context="{'group_by': 'head_of_household_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_dfr_household_list" model="ir.actions.act_window">
+        <field name="name">Households</field>
+        <field name="res_model">dfr.household</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="dfr_household_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new household record.
+            </p><p>
+                Manage data for farmer households, including head of household, members, and linked farms.
+            </p>
+        </field>
+    </record>
+
+</odoo>

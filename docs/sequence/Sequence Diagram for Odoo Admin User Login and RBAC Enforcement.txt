@@ -1,0 +1,90 @@
+sequenceDiagram
+    actor "User's Browser" as UserBrowser
+    participant "Nginx Reverse Proxy" as Nginx
+    participant "Odoo Admin Portal" as OdooPortal
+    participant "Odoo Security Services" as OdooSecurity
+    participant "PostgreSQL DB" as PostgreSQLDB
+
+    UserBrowser-Nginx: 1. POST /web/login (HTTPS, with credentials)
+    activate Nginx
+
+    Nginx-OdooPortal: 2. Forward POST /web/login (HTTP, credentials)
+    activate OdooPortal
+
+    OdooPortal-PostgreSQLDB: 2.1. Query User (username, passwordhash, mfaconfig)
+    activate PostgreSQLDB
+    PostgreSQLDB--OdooPortal: 2.2. User Record / Not Found
+    deactivate PostgreSQLDB
+
+    OdooPortal-OdooPortal: 2.3. Verify Password Hash
+
+    alt User Found & Password Valid
+        opt MFA Enabled for User
+            note over OdooPortal: MFA check (e.g., TOTP) is performed if enabled for the user after successful password validation. This involves Odoo requesting the MFA token from the user and validating it.
+            OdooPortal--Nginx: 2.4.1.1. Request MFA Token Input (Render MFA Page)
+            Nginx--UserBrowser: 2.4.1.1.1. Forward MFA Page to User
+            UserBrowser-Nginx: 2.4.1.2. POST /web/login/mfachallenge (MFA Token)
+            Nginx-OdooPortal: 2.4.1.3. Forward MFA Challenge
+            activate OdooPortal
+            OdooPortal-OdooPortal: 2.4.1.3.1. Validate MFA Token
+            alt MFA Token Invalid
+                OdooPortal--Nginx: 2.4.1.3.3. Return Login Page (MFA Error)
+            end
+            deactivate OdooPortal
+        end
+
+        OdooPortal-OdooPortal: 2.4.2. Generate Session ID
+        OdooPortal-PostgreSQLDB: 2.4.3. Store Session Record (userid, sessionid, expiry)
+        activate PostgreSQLDB
+        PostgreSQLDB--OdooPortal: 2.4.4. Session Stored Confirmation
+        deactivate PostgreSQLDB
+
+        OdooPortal--Nginx: 2.4.5. Return HTTP 200 OK (Set-Cookie: sessionid, Redirect to Dashboard)
+    else Login Failed: User Not Found, Invalid Password or Invalid MFA
+        OdooPortal--Nginx: 2.5.1. Return HTTP 200 OK with Login Page (Error Message)
+    end
+    deactivate OdooPortal
+
+    Nginx--UserBrowser: 3. Forward Login Response (Success/Failure)
+    note right of Nginx: Session ID cookie should be HttpOnly, Secure (if HTTPS), and SameSite configured for security.
+    deactivate Nginx
+
+    loop If Login Successful, User interacts with Admin Portal
+        UserBrowser-Nginx: 4.1. GET /featureurl (HTTPS, with sessionid cookie)
+        activate Nginx
+        Nginx-OdooPortal: 4.2. Forward GET /featureurl (HTTP, with sessionid cookie)
+        activate OdooPortal
+        OdooPortal-OdooPortal: 4.2.1. Validate Session ID
+
+        alt Session Valid
+            note over OdooSecurity: RBAC check involves verifying user's group memberships against ir.model.access (ACLs) for basic model/operation access, then applying ir.rule (Record Rules) to determine data visibility (domain).
+            OdooPortal-OdooSecurity: 4.2.2.1. Check Access Rights (userid, model, operation)
+            activate OdooSecurity
+            OdooSecurity-PostgreSQLDB: 4.2.2.2. Query User Groups
+            activate PostgreSQLDB
+            PostgreSQLDB--OdooSecurity: 4.2.2.3. Return User Groups
+            deactivate PostgreSQLDB
+            OdooSecurity-PostgreSQLDB: 4.2.2.4. Query ACLs & Record Rules (based on model, groups, operation)
+            activate PostgreSQLDB
+            PostgreSQLDB--OdooSecurity: 4.2.2.5. Return Permissions Data (ACLs, Rules)
+            deactivate PostgreSQLDB
+            OdooSecurity--OdooPortal: 4.2.2.6. Access Decision (Allowed/Denied, Effective Domain)
+            deactivate OdooSecurity
+
+            alt Access Allowed by RBAC
+                OdooPortal-PostgreSQLDB: 4.2.2.7.1. Query Feature Data (using effectivedomain)
+                activate PostgreSQLDB
+                PostgreSQLDB--OdooPortal: 4.2.2.7.2. Return Feature Data
+                deactivate PostgreSQLDB
+                OdooPortal--Nginx: 4.2.2.7.3. Return HTTP 200 OK (Feature Page/Data)
+            else Access Denied by RBAC
+                OdooPortal--Nginx: 4.2.2.8.1. Return HTTP 403 Forbidden / Access Denied Page
+            end
+        else Session Invalid/Expired
+            OdooPortal--Nginx: 4.2.3.1. Return HTTP 302 Redirect to /web/login
+        end
+        deactivate OdooPortal
+
+        Nginx--UserBrowser: 4.3. Forward Feature Response (Page/Data or Error)
+        deactivate Nginx
+    end

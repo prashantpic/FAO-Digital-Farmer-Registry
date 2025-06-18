@@ -1,0 +1,855 @@
+openapi: 3.1.0
+info:
+  title: DFR API
+  version: v1.0.0
+  description: API for the Digital Farmer Registry Platform
+  contact:
+    name: FAO DFR Project Team
+    url: https://www.fao.org # Placeholder
+  license:
+    name: Apache 2.0 # Or MIT
+    url: http://www.apache.org/licenses/LICENSE-2.0.html # Or MIT URL
+
+servers:
+  - url: /api/dfr/v1 # Relative to the Odoo instance base URL
+    description: Main DFR API Server
+
+components:
+  securitySchemes:
+    bearerAuth: # JWT Bearer Authentication
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "INVALID_REQUEST"
+            message:
+              type: string
+              example: "The request payload is malformed."
+            details:
+              type: object
+              additionalProperties: true
+              nullable: true
+    
+    AuthTokenRequest:
+      type: object
+      properties:
+        grant_type:
+          type: string
+          enum: [password, client_credentials, refresh_token]
+          description: OAuth2 grant type.
+        username:
+          type: string
+          description: User's login username (for password grant).
+        password:
+          type: string
+          format: password
+          description: User's password (for password grant).
+        client_id:
+          type: string
+          description: OAuth2 client ID (for client_credentials grant).
+          nullable: true
+        client_secret:
+          type: string
+          description: OAuth2 client secret (for client_credentials grant).
+          nullable: true
+        refresh_token:
+          type: string
+          description: Refresh token (for refresh_token grant).
+          nullable: true
+      required:
+        - grant_type
+
+    AuthTokenResponseData:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          format: int32
+          description: Lifetime in seconds of the access token.
+        refresh_token:
+          type: string
+          nullable: true
+        user_id:
+          type: integer # Odoo user ID
+          nullable: true
+        user_name:
+          type: string
+          nullable: true
+        user_role: # Example of roles
+          type: array
+          items:
+            type: string
+          nullable: true
+
+    FarmerRecordToPush:
+      type: object
+      properties:
+        local_id: 
+          type: string
+          format: uuid
+          description: Mobile app's local UUID for new records.
+          nullable: true
+        server_id:
+          type: string
+          format: uuid
+          description: Server's UUID for existing records being updated/deleted.
+          nullable: true
+        operation:
+          type: string
+          enum: [create, update, delete]
+        data: 
+          type: object 
+          description: "Farmer data object. Schema defined by Farmer Registry module." 
+          # example: { "name": "John Doe", "national_id": "12345" } 
+      required:
+        - operation
+    
+    PushResult:
+      type: object
+      properties:
+        local_id:
+          type: string
+          format: uuid
+          nullable: true
+        server_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [created, updated, deleted, conflict, failed]
+        message:
+          type: string
+          nullable: true
+          description: Error or conflict message.
+
+    FarmerRecordToPull: 
+      type: object
+      properties:
+        server_id:
+          type: string
+          format: uuid
+        data: 
+          type: object 
+          description: "Farmer data object. Schema defined by Farmer Registry module."
+
+    MobileSyncFarmersRequest:
+      type: object
+      properties:
+        last_sync_timestamp_server:
+          type: integer
+          format: int64
+          description: Unix timestamp of last data pulled from server by this client.
+          nullable: true
+        last_sync_timestamp_mobile:
+          type: integer
+          format: int64
+          description: Unix timestamp of last data successfully pushed to server by this client.
+          nullable: true
+        records_to_push:
+          type: array
+          items:
+            $ref: '#/components/schemas/FarmerRecordToPush'
+          nullable: true
+    
+    MobileSyncFarmersResponseData:
+      type: object
+      properties:
+        push_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PushResult'
+        records_to_pull:
+          type: array
+          items:
+            $ref: '#/components/schemas/FarmerRecordToPull'
+        current_server_timestamp:
+          type: integer
+          format: int64
+
+    FormDefinitionRecord:
+      type: object
+      description: "Represents a dynamic form definition."
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Server-side unique ID of the form definition.
+        name:
+          type: string
+          description: Name of the form.
+        version:
+          type: string
+          description: Version of the form definition.
+        definition_json: # Placeholder for actual form structure JSON
+          type: object
+          description: "The JSON structure defining the form fields, layout, and rules."
+          additionalProperties: true 
+          # example: { "fields": [ { "id": "field1", "type": "text", "label": "Name" } ] }
+
+    MobileSyncFormDefinitionsResponseData:
+      type: object
+      properties:
+        form_definitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormDefinitionRecord'
+        current_server_timestamp:
+          type: integer
+          format: int64
+
+    FormSubmissionResponseItem:
+      type: object
+      description: "A single field-value pair within a form submission."
+      properties:
+        field_id:
+          type: string
+          description: "Server-side unique ID of the form field."
+        value:
+          # Value can be string, number, boolean, array, object depending on field type.
+          # OpenAPI 3.1 allows 'any type' implicitly, or use oneOf for more specific types if known.
+          description: "The value submitted for the field."
+          # example: "John Doe" / 42 / true / ["Option A", "Option B"]
+
+    FormSubmissionToPush:
+      type: object
+      description: "A single form submission to be pushed from mobile to server."
+      properties:
+        local_submission_id:
+          type: string
+          format: uuid
+          description: "Mobile app's local UUID for this submission."
+        form_definition_id:
+          type: string
+          format: uuid
+          description: "Server-side unique ID of the form definition used."
+        farmer_id:
+          type: string
+          format: uuid
+          description: "Server-side unique ID of the farmer this submission relates to."
+        submission_date:
+          type: string
+          format: date-time
+          description: "ISO timestamp of when the submission was completed on mobile."
+        responses:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormSubmissionResponseItem'
+      required:
+        - local_submission_id
+        - form_definition_id
+        - farmer_id
+        - submission_date
+        - responses
+
+    MobileSyncFormSubmissionsRequest:
+      type: object
+      properties:
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormSubmissionToPush'
+
+    SubmissionPushResult:
+      type: object
+      properties:
+        local_submission_id:
+          type: string
+          format: uuid
+        server_submission_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [created, failed, conflict, validation_error] # Extended status
+        message:
+          type: string
+          nullable: true
+
+    MobileSyncFormSubmissionsResponseData:
+      type: object
+      properties:
+        submission_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubmissionPushResult'
+
+    AppVersionInfoData:
+      type: object
+      properties:
+        latest_version:
+          type: string
+        minimum_required_version:
+          type: string
+        update_url:
+          type: string
+          nullable: true
+        is_critical_update:
+          type: boolean
+        changelog:
+          type: string
+          nullable: true
+
+    FarmerSummaryRecord:
+      type: object
+      description: "Summary information for a farmer, used in lookup results."
+      properties:
+        server_id: # Usually internal Odoo ID
+          type: integer 
+          description: "Server's internal ID for the farmer."
+        dfr_uid:
+          type: string
+          description: "DFR Unique Identifier for the farmer."
+        name:
+          type: string
+        national_id:
+          type: string
+          nullable: true
+        village: # This might be a nested object or an ID if village is a separate entity
+          type: string
+          nullable: true
+        # Add other summary fields as required by external systems
+
+    FarmerLookupResponseData:
+      type: object
+      description: "Paginated list of farmer summaries."
+      properties:
+        farmers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FarmerSummaryRecord'
+        total_count:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+
+    FarmerDetailRecord:
+      type: object
+      description: "Detailed profile of a farmer."
+      properties:
+        server_id: # Internal Odoo ID
+          type: integer
+        dfr_uid:
+          type: string
+        full_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        sex:
+          type: string
+          nullable: true
+        contact_phone:
+          type: string
+          nullable: true
+        national_id_type:
+          type: string
+          nullable: true
+        national_id_number:
+          type: string
+          nullable: true
+        status:
+          type: string
+        address_details: # Placeholder
+          type: object
+          additionalProperties: true
+          nullable: true
+        household_info: # Placeholder
+          type: object
+          additionalProperties: true
+          nullable: true
+        farm_info: # Placeholder
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          nullable: true
+        # Add other detailed fields as required
+
+    FormSubmissionDetailRecord:
+      type: object
+      description: "Detailed information about a form submission related to a farmer."
+      properties:
+        submission_id:
+          type: string
+          format: uuid
+        form_definition_id:
+          type: string
+          format: uuid
+        form_name:
+          type: string
+        submission_date:
+          type: string
+          format: date-time
+        responses: # Key-value pairs of field_label/id: value
+          type: object
+          additionalProperties: true
+          description: "Submitted data for the form, structure depends on the form definition."
+
+    ExternalFarmerDetailResponseData:
+      type: object
+      properties:
+        farmer_profile:
+          $ref: '#/components/schemas/FarmerDetailRecord'
+        form_submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormSubmissionDetailRecord'
+          nullable: true
+
+    HealthStatusData:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "UP"
+        database:
+          type: string
+          example: "OK"
+          nullable: true
+
+    # Generic Success Response Wrapper (applied per endpoint)
+    SuccessAuthTokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/AuthTokenResponseData'
+
+    SuccessMobileSyncFarmersResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/MobileSyncFarmersResponseData'
+
+    SuccessMobileSyncFormDefinitionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/MobileSyncFormDefinitionsResponseData'
+
+    SuccessMobileSyncFormSubmissionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/MobileSyncFormSubmissionsResponseData'
+    
+    SuccessAppVersionInfoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/AppVersionInfoData'
+
+    SuccessFarmerLookupResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/FarmerLookupResponseData'
+
+    SuccessExternalFarmerDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/ExternalFarmerDetailResponseData'
+          
+    SuccessHealthStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/HealthStatusData'
+
+
+paths:
+  /auth/token:
+    post:
+      summary: Obtain an API access token
+      tags:
+        - Authentication
+      operationId: DFR_API_AUTH_TOKEN_POST
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+          application/json:
+             schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+      responses:
+        '200':
+          description: Successfully authenticated and token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessAuthTokenResponse'
+        '400':
+          description: Invalid request (e.g., missing params, unsupported grant type, invalid credentials)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sync/farmers:
+    post:
+      summary: Synchronize farmer data with the mobile app
+      tags:
+        - Mobile Sync
+      operationId: DFR_API_MOBILE_SYNC_FARMERS_POST
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileSyncFarmersRequest'
+      responses:
+        '200':
+          description: Farmer data synchronized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMobileSyncFarmersResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sync/form-definitions:
+    get:
+      summary: Get dynamic form definitions for mobile app
+      tags:
+        - Mobile Sync
+      operationId: DFR_API_MOBILE_SYNC_FORM_DEFINITIONS_GET
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: last_sync_timestamp
+          in: query
+          description: Unix timestamp of the last successful sync for form definitions.
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Form definitions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMobileSyncFormDefinitionsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sync/form-submissions:
+    post:
+      summary: Push form submissions from mobile app to server
+      tags:
+        - Mobile Sync
+      operationId: DFR_API_MOBILE_SYNC_FORM_SUBMISSIONS_POST
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileSyncFormSubmissionsRequest'
+      responses:
+        '200':
+          description: Form submissions processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMobileSyncFormSubmissionsResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sync/app-version-check:
+    get:
+      summary: Check for mobile app updates
+      tags:
+        - Mobile Sync
+      operationId: DFR_API_MOBILE_SYNC_APP_VERSION_CHECK_GET
+      parameters:
+        - name: current_app_version
+          in: query
+          description: Current version of the mobile app installed on the device.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App version information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessAppVersionInfoResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /external/farmers/lookup:
+    get:
+      summary: Lookup farmer data for external systems
+      tags:
+        - External Data
+      operationId: DFR_API_EXTERNAL_FARMERS_LOOKUP_GET
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uid
+          in: query
+          description: DFR Farmer UID.
+          required: false
+          schema:
+            type: string
+        - name: national_id
+          in: query
+          description: National ID number of the farmer.
+          required: false
+          schema:
+            type: string
+        - name: name
+          in: query
+          description: Full or partial name of the farmer.
+          required: false
+          schema:
+            type: string
+        - name: village
+          in: query
+          description: Village name or ID.
+          required: false
+          schema:
+            type: string
+        - name: offset
+          in: query
+          description: Number of records to skip for pagination.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: limit
+          in: query
+          description: Maximum number of records to return.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        '200':
+          description: Farmer lookup results retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessFarmerLookupResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /external/farmers/{farmer_uid}:
+    get:
+      summary: Retrieve detailed farmer data by DFR UID
+      tags:
+        - External Data
+      operationId: DFR_API_EXTERNAL_FARMERS_RETRIEVE_GET
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: farmer_uid
+          in: path
+          description: DFR Unique Identifier for the farmer.
+          required: true
+          schema:
+            type: string
+        - name: include_forms
+          in: query
+          description: Comma-separated list of form definition IDs to include submissions for.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Farmer details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessExternalFarmerDetailResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Farmer Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      summary: API Health Check
+      tags:
+        - General
+      operationId: DFR_API_HEALTH_CHECK_GET
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessHealthStatusResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

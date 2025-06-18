@@ -1,0 +1,77 @@
+sequenceDiagram
+    actor "Monitoring System (Prometheus, Alertmanager, Grafana)" as dfr-ops-monitoring-alerting-024
+    participant "Odoo App Container" as dfr-infra-odoo-app-container-019
+    participant "PostgreSQL DB Container" as dfr-infra-postgres-db-container-020
+    participant "Nginx Reverse Proxy" as dfr-infra-reverse-proxy-021
+    actor "DFR Administrator" as AdminUser
+
+    loop 1 [Loop: Continuous Monitoring Cycle]
+        activate dfr-ops-monitoring-alerting-024
+        note over dfr-ops-monitoring-alerting-024: Metrics scraping from components (1.1-1.3) happens concurrently or in quick succession within each monitoring cycle.
+        dfr-ops-monitoring-alerting-024-dfr-infra-odoo-app-container-019: 1.1 scrapeMetrics() via Odoo Exporter
+        activate dfr-infra-odoo-app-container-019
+        dfr-infra-odoo-app-container-019--dfr-ops-monitoring-alerting-024: odooApplicationMetrics
+        deactivate dfr-infra-odoo-app-container-019
+
+        dfr-ops-monitoring-alerting-024-dfr-infra-postgres-db-container-020: 1.2 scrapeMetrics() via postgresexporter
+        activate dfr-infra-postgres-db-container-020
+        dfr-infra-postgres-db-container-020--dfr-ops-monitoring-alerting-024: postgreSQLMetrics
+        deactivate dfr-infra-postgres-db-container-020
+
+        dfr-ops-monitoring-alerting-024-dfr-infra-reverse-proxy-021: 1.3 scrapeMetrics() via Nginx Exporter/stubstatus
+        activate dfr-infra-reverse-proxy-021
+        dfr-infra-reverse-proxy-021--dfr-ops-monitoring-alerting-024: nginxMetrics
+        deactivate dfr-infra-reverse-proxy-021
+
+        dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 1.4 storeMetrics(allMetrics)
+        dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 1.5 evaluateAlertRules(allMetrics) / returns evaluationResult
+        
+        alt 1.5.1 [Alternative: IF Metric Exceeds Threshold AND Alert Not Already Firing]
+            dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 1.5.1.1 Prometheus forwards alert to Alertmanager
+            dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 1.5.1.2 Alertmanager processes and groups alert
+            dfr-ops-monitoring-alerting-024-AdminUser: 1.5.1.3 sendNotification(alertDetails, channel='Email/SMS')
+            activate AdminUser
+            note right of AdminUser: Notification sending (1.5.1.3, 6.2.1.3) uses external Email/SMS gateway services which are abstracted here.
+        end
+    end
+
+    AdminUser-AdminUser: 2 [Opt: Admin receives alert notification]
+    
+    AdminUser-dfr-ops-monitoring-alerting-024: 3 viewDashboards(alertContext) using Grafana
+    dfr-ops-monitoring-alerting-024--AdminUser: monitoringDataVisualized
+    
+    AdminUser-dfr-ops-monitoring-alerting-024: 4 queryLogs(filterCriteria) using Grafana/Loki
+    dfr-ops-monitoring-alerting-024--AdminUser: logData
+
+    note over AdminUser: Corrective actions (5.1-5.3) are highly dependent on the nature of the alert and are abstractly represented. They aim to return the metric to a normal state.
+
+    AdminUser-dfr-infra-odoo-app-container-019: 5.1 performCorrectiveActionOnOdoo() (Example)
+    activate dfr-infra-odoo-app-container-019
+    dfr-infra-odoo-app-container-019--AdminUser: actionStatus
+    deactivate dfr-infra-odoo-app-container-019
+
+    AdminUser-dfr-infra-postgres-db-container-020: 5.2 performCorrectiveActionOnDB() (Example)
+    activate dfr-infra-postgres-db-container-020
+    dfr-infra-postgres-db-container-020--AdminUser: actionStatus
+    deactivate dfr-infra-postgres-db-container-020
+
+    AdminUser-dfr-infra-reverse-proxy-021: 5.3 performCorrectiveActionOnNginx() (Example)
+    activate dfr-infra-reverse-proxy-021
+    dfr-infra-reverse-proxy-021--AdminUser: actionStatus
+    deactivate dfr-infra-reverse-proxy-021
+
+    loop 6 [Loop: Continuous Monitoring Cycle continues]
+        dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 6.1 scrapeMetrics() from all components (as in 1.1-1.3) / returns updatedMetrics
+        dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 6.2 evaluateAlertRules(updatedMetrics) / returns evaluationResult
+        
+        alt 6.2.1 [Alternative: IF Metric Normalized AND Alert Was Firing]
+            dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 6.2.1.1 Prometheus forwards resolution to Alertmanager
+            dfr-ops-monitoring-alerting-024-dfr-ops-monitoring-alerting-024: 6.2.1.2 Alertmanager resolves the alert
+            dfr-ops-monitoring-alerting-024-AdminUser: 6.2.1.3 sendResolutionNotification(alertDetails, channel='Email/SMS') (Optional)
+        end
+    end
+
+    deactivate AdminUser
+    deactivate dfr-ops-monitoring-alerting-024
+
+    note over dfr-ops-monitoring-alerting-024,AdminUser: The monitoring system (Prometheus) continuously re-evaluates metrics. If a resolved metric breaches threshold again, a new alert instance would typically be created.

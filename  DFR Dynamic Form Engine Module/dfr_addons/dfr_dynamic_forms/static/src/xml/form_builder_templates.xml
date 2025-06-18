@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="dfr_dynamic_forms.FormBuilderWidget" owl="1">
+        <div class="o_form_builder_widget">
+            <div class="o_form_builder_header mb-2" t-if="state.isEditable">
+                <button class="btn btn-primary btn-sm" t-on-click.prevent="_onAddField">
+                    <i class="fa fa-plus me-1"/> Add Field
+                </button>
+            </div>
+            <div t-if="!state.isEditable" class="alert alert-info" role="alert">
+                This form version is not in 'Draft' state and cannot be edited.
+            </div>
+            <div t-if="state.fields.length === 0" class="text-muted fst-italic my-3">
+                No fields defined yet. Click "Add Field" to begin.
+            </div>
+            <ul t-if="state.fields.length > 0" class="list-group form-fields-list" t-ref="fieldContainer">
+                <t t-foreach="state.fields" t-as="field" t-key="field.id">
+                    <li class="list-group-item form-field-item"
+                        t-att-data-field-id="field.id"
+                        t-att-draggable="state.isEditable ? 'true' : 'false'"
+                        t-on-dragstart="(ev) => this._onDragStart(ev, field)"
+                        t-on-dragover.prevent="_onDragOver"
+                        t-on-dragleave.prevent="_onDragLeave"
+                        t-on-drop.prevent="(ev) => this._onDrop(ev, field)"
+                        t-on-dragend.prevent="_onDragEnd"
+                        >
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i t-if="state.isEditable" class="fa fa-bars drag-handle me-2 text-muted" title="Drag to reorder"/>
+                                <span class="field-label fw-bold" t-esc="field.label"/>
+                                <small class="field-name text-muted ms-1" t-esc="'(' + field.name + ')'"/>
+                                <span class="badge bg-secondary ms-2 text-capitalize" t-esc="field.field_type.replace('_', ' ')"/>
+                                <span t-if="field.is_required || field.validation_rule_required" class="badge bg-danger ms-1">Required</span>
+                            </div>
+                            <div class="field-actions">
+                                <button class="btn btn-sm btn-light me-1" title="Edit Properties" t-on-click.prevent="() => this._onEditField(field.id)">
+                                    <i class="fa fa-pencil"/>
+                                </button>
+                                <button t-if="state.isEditable" class="btn btn-sm btn-danger" title="Delete Field" t-on-click.prevent="() => this._onDeleteField(field.id)">
+                                    <i class="fa fa-trash"/>
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                </t>
+            </ul>
+        </div>
+    </t>
+
+    <t t-name="dfr_dynamic_forms.FieldPropertiesModal" owl="1">
+        <div class="o_field_properties_modal">
+            <!-- Modal Header defined by Dialog Component title prop -->
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" t-att-class="{ active: state.activeTab === 'general' }" t-on-click="() => state.activeTab = 'general'" type="button" role="tab">General</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" t-att-class="{ active: state.activeTab === 'validation' }" t-on-click="() => state.activeTab = 'validation'" type="button" role="tab">Validation</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" t-att-class="{ active: state.activeTab === 'conditional' }" t-on-click="() => state.activeTab = 'conditional'" type="button" role="tab">Conditional Logic</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- General Tab -->
+                    <div class="tab-pane fade" t-att-class="{ 'show active': state.activeTab === 'general' }" role="tabpanel">
+                        <div class="mb-3 row">
+                            <label for="fieldName" class="col-sm-4 col-form-label">Technical Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control" id="fieldName" t-model="state.field.name" t-att-readonly="!props.isEditable || state.field.id"/> <!-- Cannot change name after creation for now -->
+                                <small class="form-text text-muted">Technical identifier (e.g., 'farmer_age'). Auto-generated for new fields, cannot be changed after saving for simplicity.</small>
+                            </div>
+                        </div>
+                        <div class="mb-3 row">
+                            <label for="fieldLabel" class="col-sm-4 col-form-label">Label</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control" id="fieldLabel" t-model="state.field.label" t-att-readonly="!props.isEditable"/>
+                            </div>
+                        </div>
+                        <div class="mb-3 row">
+                            <label for="fieldType" class="col-sm-4 col-form-label">Field Type</label>
+                            <div class="col-sm-8">
+                                <select class="form-select" id="fieldType" t-model="state.field.field_type" t-att-disabled="!props.isEditable">
+                                    <t t-foreach="fieldTypes" t-as="ft" t-key="ft.id">
+                                        <option t-att-value="ft.id" t-esc="ft.label"/>
+                                    </t>
+                                </select>
+                            </div>
+                        </div>
+                         <div class="mb-3 row">
+                            <label for="fieldHelpText" class="col-sm-4 col-form-label">Help Text</label>
+                            <div class="col-sm-8">
+                                <textarea class="form-control" id="fieldHelpText" rows="2" t-model="state.field.help_text" t-att-readonly="!props.isEditable"></textarea>
+                            </div>
+                        </div>
+                        <div class="mb-3 row">
+                            <label for="fieldPlaceholder" class="col-sm-4 col-form-label">Placeholder</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control" id="fieldPlaceholder" t-model="state.field.placeholder" t-att-readonly="!props.isEditable"/>
+                            </div>
+                        </div>
+
+                        <div t-if="isFieldTypeWithSelectionOptions" class="mb-3 row">
+                            <label for="fieldSelectionOptions" class="col-sm-4 col-form-label">Selection Options</label>
+                            <div class="col-sm-8">
+                                <textarea class="form-control" id="fieldSelectionOptions" rows="4" t-model="state.field.selection_options" t-att-readonly="!props.isEditable"></textarea>
+                                <small class="form-text text-muted">One option per line: 'value:Label'. E.g., 'opt1:Option 1'.</small>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 border-top pt-3">Default Value</h5>
+                        <div class="mb-3 row" t-if="state.field.field_type === 'text' || state.field.field_type === 'computed_text' || state.field.field_type === 'selection'">
+                            <label for="defaultValueText" class="col-sm-4 col-form-label">Default Text/Key</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control" id="defaultValueText" t-model="state.field.default_value_text" t-att-readonly="!props.isEditable"/>
+                                <small t-if="state.field.field_type === 'selection'" class="form-text text-muted">Enter the 'key' of the default selection option.</small>
+                            </div>
+                        </div>
+                        <div class="mb-3 row" t-if="state.field.field_type === 'number'">
+                            <label for="defaultValueNumber" class="col-sm-4 col-form-label">Default Number</label>
+                            <div class="col-sm-8">
+                                <input type="number" class="form-control" id="defaultValueNumber" t-model.number="state.field.default_value_number" t-att-readonly="!props.isEditable"/>
+                            </div>
+                        </div>
+                        <div class="mb-3 row" t-if="state.field.field_type === 'boolean'">
+                             <div class="col-sm-8 offset-sm-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="defaultValueBoolean" t-model="state.field.default_value_boolean" t-att-disabled="!props.isEditable"/>
+                                    <label class="form-check-label" for="defaultValueBoolean">
+                                        Default Boolean (Checked?)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Validation Tab -->
+                    <div class="tab-pane fade" t-att-class="{ 'show active': state.activeTab === 'validation' }" role="tabpanel">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="validationRequired" t-model="state.field.validation_rule_required" t-att-disabled="!props.isEditable"/>
+                            <label class="form-check-label" for="validationRequired">
+                                Validation: Field is Required
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="fieldIsRequired" t-model="state.field.is_required" t-att-disabled="!props.isEditable"/>
+                            <label class="form-check-label" for="fieldIsRequired">
+                                UI Hint: Is Required (Form Level)
+                            </label>
+                        </div>
+
+                        <div t-if="isFieldTypeText" class="mb-3 row">
+                            <label for="validationMinLength" class="col-sm-4 col-form-label">Min Length</label>
+                            <div class="col-sm-8">
+                                <input type="number" class="form-control" id="validationMinLength" t-model.number="state.field.validation_rule_min_length" t-att-readonly="!props.isEditable" min="0"/>
+                            </div>
+                        </div>
+                        <div t-if="isFieldTypeText" class="mb-3 row">
+                            <label for="validationMaxLength" class="col-sm-4 col-form-label">Max Length</label>
+                            <div class="col-sm-8">
+                                <input type="number" class="form-control" id="validationMaxLength" t-model.number="state.field.validation_rule_max_length" t-att-readonly="!props.isEditable" min="0"/>
+                            </div>
+                        </div>
+
+                        <div t-if="isFieldTypeNumeric" class="mb-3 row">
+                            <label for="validationMinValue" class="col-sm-4 col-form-label">Min Value</label>
+                            <div class="col-sm-8">
+                                <input type="number" step="any" class="form-control" id="validationMinValue" t-model.number="state.field.validation_rule_min_value" t-att-readonly="!props.isEditable"/>
+                            </div>
+                        </div>
+                        <div t-if="isFieldTypeNumeric" class="mb-3 row">
+                            <label for="validationMaxValue" class="col-sm-4 col-form-label">Max Value</label>
+                            <div class="col-sm-8">
+                                <input type="number" step="any" class="form-control" id="validationMaxValue" t-model.number="state.field.validation_rule_max_value" t-att-readonly="!props.isEditable"/>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <label for="validationRegex" class="col-sm-4 col-form-label">Regex Pattern</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control" id="validationRegex" t-model="state.field.validation_rule_regex" t-att-readonly="!props.isEditable"/>
+                            </div>
+                        </div>
+                        <div class="mb-3 row">
+                            <label for="validationErrorMessage" class="col-sm-4 col-form-label">Custom Validation Error Message</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control" id="validationErrorMessage" t-model="state.field.validation_error_message" t-att-readonly="!props.isEditable"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conditional Logic Tab -->
+                    <div class="tab-pane fade" t-att-class="{ 'show active': state.activeTab === 'conditional' }" role="tabpanel">
+                        <p class="form-text text-muted">Show this field if ALL of the following conditions are met. Conditions apply based on other fields in this form version.</p>
+                        <div t-if="state.conditionalLogicError" class="alert alert-danger" t-esc="state.conditionalLogicError"/>
+
+                        <div class="list-group mb-3 conditional-logic-list">
+                            <t t-if="!state.field.parsedConditionalLogic || state.field.parsedConditionalLogic.length === 0">
+                                <div class="list-group-item text-muted fst-italic">No conditions defined.</div>
+                            </t>
+                            <t t-foreach="state.field.parsedConditionalLogic || []" t-as="condition" t-key="condition_index">
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        Field <strong t-esc="condition.field_name"/>
+                                        <span t-esc="condition.operator"/>
+                                        <strong t-esc="condition.value"/>
+                                        (<span class="text-capitalize" t-esc="condition.value_type"/>)
+                                    </div>
+                                    <button t-if="props.isEditable" class="btn btn-sm btn-link text-danger p-0" t-on-click="() => this._removeCondition(condition_index)" title="Remove condition">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </div>
+                            </t>
+                        </div>
+
+                        <div t-if="props.isEditable" class="card">
+                            <div class="card-body">
+                                <h5 class="card-title fs-6">Add New Condition</h5>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Trigger Field</label>
+                                         <select class="form-select form-select-sm" t-model="state.newCondition.field_name">
+                                            <option value="">Select Field...</option>
+                                            <t t-foreach="props.formFieldsForCondition" t-as="f" t-key="f.name">
+                                                <option t-att-value="f.name" t-esc="f.label + ' (' + f.name + ')'"/>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Operator</label>
+                                        <select class="form-select form-select-sm" t-model="state.newCondition.operator">
+                                            <t t-foreach="conditionalOperators" t-as="op" t-key="op.id">
+                                                <option t-att-value="op.id" t-esc="op.label"/>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Value</label>
+                                        <input type="text" class="form-control form-control-sm" placeholder="Value to compare" t-model="state.newCondition.value"/>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Value Type</label>
+                                        <select class="form-select form-select-sm" t-model="state.newCondition.value_type">
+                                            <t t-foreach="conditionalValueTypes" t-as="vt" t-key="vt.id">
+                                                <option t-att-value="vt.id" t-esc="vt.label"/>
+                                            </t>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-secondary" t-on-click.prevent="_addCondition">
+                                    <i class="fa fa-plus me-1"/>Add Condition
+                                </button>
+                            </div>
+                        </div>
+                         <div class="mt-3">
+                            <label for="conditionalLogicJsonRaw" class="form-label">Raw JSON (Advanced)</label>
+                            <textarea class="form-control form-control-sm font-monospace" id="conditionalLogicJsonRaw" rows="4"
+                                      t-att-value="state.field.parsedConditionalLogic &amp;&amp; state.field.parsedConditionalLogic.length > 0 ? JSON.stringify(state.field.parsedConditionalLogic, null, 2) : ''"
+                                      t-on-change="_updateRawJson"
+                                      t-att-readonly="!props.isEditable"
+                                      placeholder="[{&quot;field_name&quot;: &quot;...&quot;, &quot;operator&quot;: &quot;=&quot;, &quot;value&quot;: &quot;...&quot;, &quot;value_type&quot;: &quot;text&quot;}]"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Modal Footer defined by Dialog Component -->
+        </div>
+    </t>
+
+</templates>

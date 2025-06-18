@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="dfr_analytics.DashboardManager" owl="1">
+        <div class="o_dfr_analytics_dashboard container-fluid p-3">
+            <t t-if="state.loading">
+                <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading Dashboard...</span>
+                    </div>
+                </div>
+            </t>
+            <t t-elif="state.error">
+                <div class="alert alert-danger" role="alert">
+                    Error loading dashboard: <t t-esc="state.error"/>
+                </div>
+            </t>
+            <t t-else="">
+                <h2 class="mb-3">DFR Analytics Overview</h2>
+
+                <!-- Filter Area -->
+                <div class="dashboard_filters alert alert-light p-3 mb-4">
+                     <h5 class="mb-3">Filters</h5>
+                     <div class="row g-3">
+                         <div class="col-md-3">
+                             <label for="dateFromFilter" class="form-label">Date From:</label>
+                             <input type="date" id="dateFromFilter" class="form-control"
+                                    t-att-value="state.filters.date_from"
+                                    t-on-change="(ev) => this.onFilterChange('date_from', ev.target.value)"/>
+                         </div>
+                         <div class="col-md-3">
+                             <label for="dateToFilter" class="form-label">Date To:</label>
+                             <input type="date" id="dateToFilter" class="form-control"
+                                    t-att-value="state.filters.date_to"
+                                    t-on-change="(ev) => this.onFilterChange('date_to', ev.target.value)"/>
+                         </div>
+                         <div class="col-md-3">
+                            <label for="dynamicFormFilter" class="form-label">Dynamic Form (for KPIs/Charts):</label>
+                            <select id="dynamicFormFilter" class="form-select"
+                                    t-on-change="(ev) => this.onFilterChange('dynamic_form_id', ev.target.value)">
+                                <option value="">-- All Forms (Overview) --</option>
+                                <t t-foreach="state.dynamicForms" t-as="form" t-key="form.id">
+                                    <option t-att-value="form.id" t-esc="form.name"
+                                            t-att-selected="form.id === state.filters.dynamic_form_id"/>
+                                </t>
+                            </select>
+                         </div>
+                         <!-- Add more filter fields for geographic_area_ids, farmer_status_ids using appropriate widgets or multi-selects -->
+                         <!-- Example placeholder for M2M (would need a proper widget component)
+                         <div class="col-md-3">
+                            <label class="form-label">Geographic Areas:</label>
+                            <input type="text" class="form-control" placeholder="M2M Tag Widget Placeholder"/>
+                         </div>
+                         -->
+                         <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" t-on-click="() => this.updateDashboardData(state.filters)">Apply Filters</button>
+                         </div>
+                     </div>
+                </div>
+
+                <h4 class="mt-4 mb-3">Key Performance Indicators</h4>
+                <div class="kpi_widgets_container row g-3">
+                    <div class="col-lg-3 col-md-6"><KpiWidget title="Total Farmers Registered" t-props="{ value: state.kpiData.total_registrations }"/></div>
+                    <div class="col-lg-3 col-md-6"><KpiWidget title="Total Plots Recorded" t-props="{ value: state.kpiData.total_plots }"/></div>
+                    <div class="col-lg-3 col-md-6"><KpiWidget title="Total Land Area (Ha)" t-props="{ value: state.kpiData.total_land_area !== undefined ? state.kpiData.total_land_area.toFixed(2) : 'N/A' }"/></div>
+                    <div class="col-lg-3 col-md-6"><KpiWidget title="Average Plot Size (Ha)" t-props="{ value: state.kpiData.average_plot_size !== undefined ? state.kpiData.average_plot_size.toFixed(2) : 'N/A' }"/></div>
+                    <t t-if="state.kpiData.total_submissions !== undefined">
+                         <div class="col-lg-3 col-md-6"><KpiWidget title="Total Form Submissions" t-props="{ value: state.kpiData.total_submissions }"/></div>
+                    </t>
+                    <t t-if="state.kpiData.form_name and state.kpiData.form_name !== 'N/A' and state.kpiData.form_name !== 'All Forms'">
+                         <div class="col-lg-3 col-md-6"><KpiWidget title="Selected Form" t-props="{ value: state.kpiData.form_name }"/></div>
+                    </t>
+                </div>
+
+                <h4 class="mt-4 mb-3">Charts &amp; Distributions</h4>
+                <div class="chart_widgets_container row g-3">
+                    <t t-if="state.chartData.registrationTrends.labels and state.chartData.registrationTrends.labels.length > 0">
+                        <div class="col-md-6">
+                            <ChartWidget chartType="'line'" t-props="{ chartData: state.chartData.registrationTrends, title: 'Registration Trends' }"/>
+                        </div>
+                    </t>
+                    <t t-if="state.chartData.genderDisaggregation.labels and state.chartData.genderDisaggregation.labels.length > 0">
+                        <div class="col-md-6">
+                            <ChartWidget chartType="'pie'" t-props="{ chartData: state.chartData.genderDisaggregation, title: 'Gender Distribution' }"/>
+                        </div>
+                    </t>
+                    <!-- Add ChartWidgets for Age Distribution, Land Distribution when data is available -->
+                    <!-- Example:
+                    <t t-if="state.chartData.ageDistribution.labels and state.chartData.ageDistribution.labels.length > 0">
+                        <div class="col-md-6">
+                            <ChartWidget chartType="'bar'" t-props="{ chartData: state.chartData.ageDistribution, title: 'Age Distribution' }"/>
+                        </div>
+                    </t>
+                    -->
+                    <t t-if="state.chartData.formResponseDistribution and Object.keys(state.chartData.formResponseDistribution).length > 0">
+                         <t t-foreach="Object.entries(state.chartData.formResponseDistribution)" t-as="entry" t-key="entry[0]">
+                            <div class="col-md-6">
+                                 <ChartWidget chartType="'bar'" t-props="{ chartData: entry[1], title: entry[0] }"/>
+                            </div>
+                         </t>
+                     </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="dfr_analytics.KpiWidget" owl="1">
+        <div class="o_dfr_kpi_widget card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h6 class="kpi_title card-subtitle mb-2 text-muted">
+                     <t t-if="props.icon"><i t-att-class="'me-2 ' + props.icon"/></t>
+                     <t t-esc="props.title"/>
+                </h6>
+                <h3 class="kpi_value card-title"><t t-esc="displayValue"/></h3>
+                <t t-if="props.trend">
+                    <div t-attf-class="kpi_trend small {{ props.trend === 'up' ? 'text-success' : props.trend === 'down' ? 'text-danger' : 'text-muted' }}">
+                        <t t-if="props.percentage_change">
+                             <t t-esc="props.percentage_change"/><t t-if="typeof props.percentage_change === 'number'">%</t>
+                        </t>
+                         <span t-if="props.trend === 'up'">▲</span>
+                         <span t-if="props.trend === 'down'">▼</span>
+                         <span t-if="props.trend === 'neutral'">●</span>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="dfr_analytics.ChartWidget" owl="1">
+         <div class="chart_widget card shadow-sm h-100">
+            <div class="card-body" style="min-height: 300px; position: relative;"> <!-- Ensure container has dimensions -->
+                 <canvas t-ref="canvas"></canvas>
+            </div>
+         </div>
+    </t>
+
+</templates>

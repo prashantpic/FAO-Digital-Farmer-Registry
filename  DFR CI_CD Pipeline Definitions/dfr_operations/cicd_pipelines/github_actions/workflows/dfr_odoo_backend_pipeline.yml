@@ -1,0 +1,386 @@
+name: DFR Odoo Backend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/dfr-odoo-backend # Example, adjust as needed
+  ODOO_MODULES_PATH: ./dfr_addons # Adjust path to your Odoo modules
+  PYTHON_VERSION: '3.9' # Specify Python version used by Odoo
+  # Feature Toggles (can be set as repository variables or environment secrets)
+  ENABLE_SAST_SCANS_PER_COMMIT: ${{ vars.ENABLE_SAST_SCANS_PER_COMMIT || 'true' }}
+  ENABLE_DAST_SCANS_PER_BUILD: ${{ vars.ENABLE_DAST_SCANS_PER_BUILD || 'true' }}
+  AUTO_DEPLOY_TO_STAGING_ON_MAIN_MERGE: ${{ vars.AUTO_DEPLOY_TO_STAGING_ON_MAIN_MERGE || 'true' }} # Assuming develop deploys to staging
+  REQUIRE_MANUAL_APPROVAL_FOR_PRODUCTION_DEPLOYMENT: ${{ vars.REQUIRE_MANUAL_APPROVAL_FOR_PRODUCTION_DEPLOYMENT || 'true' }}
+
+jobs:
+  lint_code:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linting tools
+        run: |
+          pip install flake8 pylint black bandit
+          # Add other linters if needed
+
+      - name: Run Flake8
+        run: flake8 ${{ env.ODOO_MODULES_PATH }}
+      
+      - name: Run Pylint
+        run: pylint ${{ env.ODOO_MODULES_PATH }}
+        # Add --fail-under or similar to fail the job based on score if desired
+
+      - name: Run Black (check mode)
+        run: black --check ${{ env.ODOO_MODULES_PATH }}
+
+      - name: Run Bandit (Python SAST for security)
+        run: bandit -r ${{ env.ODOO_MODULES_PATH }} -f json -o bandit_report.json
+        continue-on-error: true # Decide if this should fail the build
+
+      - name: Upload Bandit Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit_report.json
+
+  unit_test_odoo:
+    name: Unit Tests (Odoo)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: test_dfr_cicd_unit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Odoo Dependencies
+        run: |
+          # This step would typically install system dependencies and Python packages for Odoo
+          # Example: sudo apt-get update && sudo apt-get install -y ...
+          # pip install -r requirements.txt (if you have one for Odoo)
+          echo "Assuming Odoo dependencies are handled by the test script or Docker image for tests"
+
+      - name: Run Odoo Unit Tests
+        env:
+          ODOO_DATABASE_NAME: test_dfr_cicd_unit
+          ODOO_MODULES_TO_TEST: "dfr_farmer_registry,dfr_dynamic_forms" # Example, adjust as needed or use 'all'
+          TEST_TYPE: unit
+          ODOO_ADDONS_PATH: "${{ env.ODOO_MODULES_PATH }},/path/to/odoo/addons" # Adjust Odoo core addons path
+          DB_HOST: localhost # Service is mapped to localhost for the job
+          DB_PORT: 5432
+          DB_USER: odoo
+          DB_PASSWORD: odoo
+        run: ./scripts/common/run_odoo_tests.sh
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: |
+            test_results/ # Path to where run_odoo_tests.sh might store results/logs
+            *.xml # If JUnit compatible reports are generated
+
+  integration_test_odoo:
+    name: Integration Tests (Odoo)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: test_dfr_cicd_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Odoo Dependencies
+        run: |
+          echo "Assuming Odoo dependencies are handled by the test script or Docker image for tests"
+
+      - name: Run Odoo Integration Tests
+        env:
+          ODOO_DATABASE_NAME: test_dfr_cicd_integration
+          ODOO_MODULES_TO_TEST: "all" # Example, run all DFR modules for integration
+          TEST_TYPE: integration
+          ODOO_ADDONS_PATH: "${{ env.ODOO_MODULES_PATH }},/path/to/odoo/addons" # Adjust Odoo core addons path
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: odoo
+          DB_PASSWORD: odoo
+        run: ./scripts/common/run_odoo_tests.sh
+
+      - name: Upload Integration Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: |
+            test_results/
+            *.xml
+
+  sast_scan_sonar:
+    name: SAST Scan (SonarCloud/SonarQube)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && env.ENABLE_SAST_SCANS_PER_COMMIT == 'true'
+    needs: [lint_code] # Run after basic linting
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # SonarScanner needs full history for accurate new code detection
+
+      - name: Set up JDK 17 for SonarScanner
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Download and set up SonarScanner
+        env:
+          SONAR_SCANNER_VERSION: 5.0.1.3006
+        run: |
+          mkdir -p $HOME/.sonar
+          curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}.zip
+          unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+          echo "$HOME/.sonar/sonar-scanner-${SONAR_SCANNER_VERSION}/bin" >> $GITHUB_PATH
+          
+      - name: Run SonarScanner
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For PR decoration
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=dfr_odoo_backend \
+            -Dsonar.sources=${{ env.ODOO_MODULES_PATH }} \
+            -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ env.SONAR_TOKEN }} \
+            -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} \
+            -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }} \
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+            -Dsonar.scm.revision=${{ github.sha }}
+
+  build_and_push_docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint_code, unit_test_odoo, integration_test_odoo, sast_scan_sonar]
+    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine Image Tag
+        id: image_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            TAG="main-${{ github.sha }}"
+          elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
+            TAG="develop-${{ github.sha }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="latest" # Fallback, or fail
+          fi
+          echo "IMAGE_TAG=${TAG}" >> $GITHUB_ENV
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        env:
+          DOCKERFILE_PATH: ./Dockerfile # Assuming Dockerfile is at the root of the context
+          BUILD_CONTEXT: .
+          PUSH_IMAGE: "true"
+          DOCKER_REGISTRY_URL: ghcr.io
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_ARGS: "--build-arg VCS_REF=${{ github.sha }} --build-arg VERSION=${{ env.IMAGE_TAG }}"
+        run: |
+          ./scripts/common/build_odoo_docker.sh
+      
+      - name: Echo Image Details
+        run: echo "Pushed Docker image: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+
+  dast_scan_zap:
+    name: DAST Scan (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: build_and_push_docker # Assuming DAST scans a deployed version of the new image
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && env.ENABLE_DAST_SCANS_PER_BUILD == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # To access ZAP config files if any
+
+      # Placeholder: Deploy to a temporary scan environment if needed
+      # This step is highly dependent on your infrastructure.
+      # For example, deploy the image built in `build_and_push_docker` to a test K8s namespace.
+      - name: Deploy to Temporary Scan Environment (Conceptual)
+        run: |
+          echo "Conceptual: Deploying ${{ env.DOCKER_IMAGE_NAME }}:${{ needs.build_and_push_docker.outputs.tag }} to a temporary environment."
+          echo "Target URL for ZAP will be based on this deployment: ${{ secrets.ZAP_TARGET_URL_STAGING }}"
+          # Actual deployment commands would go here. For now, we assume ZAP_TARGET_URL_STAGING is available.
+
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: ${{ secrets.ZAP_TARGET_URL_STAGING }} # Must be a publicly accessible URL for ZAP
+          rules_file_name: '.zap/rules.tsv' # Optional: Path to ZAP rules file in repo
+          cmd_options: '-J zap_report.json -r zap_report.html'
+          # token: ${{ secrets.ZAP_API_KEY }} # If ZAP requires authentication
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-scan-report
+          path: |
+            zap_report.html
+            zap_report.json
+
+  deploy_staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build_and_push_docker, dast_scan_zap] # DAST can be a gate
+    environment:
+      name: staging
+      url: ${{ secrets.STAGING_APP_URL }} # Define STAGING_APP_URL in GitHub environment secrets
+    if: success() && (github.ref == 'refs/heads/develop') && env.AUTO_DEPLOY_TO_STAGING_ON_MAIN_MERGE == 'true' # Assuming develop branch deploys to staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # If deployment scripts/configs are in this repo
+
+      - name: Setup Deployment Tools (e.g., kubectl, docker-compose)
+        run: |
+          echo "Setting up deployment tools..."
+          # Example: sudo apt-get install -y docker-compose
+          # Example: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+      - name: Deploy to Staging
+        env:
+          DEPLOYMENT_ENV: staging
+          APP_NAME: dfr-odoo-backend
+          IMAGE_TAG_OR_ARTIFACT_PATH: "${{ env.DOCKER_IMAGE_NAME }}:${{ needs.build_and_push_docker.outputs.tag }}"
+          CONFIG_FILE_PATH: "./deployment/staging/docker-compose.yml" # Example path, adjust
+          DEPLOYMENT_TYPE: "docker-compose" # or "kubernetes"
+          # Pass necessary secrets for deployment (e.g., KUBE_CONFIG_DATA, SSH_PRIVATE_KEY)
+          STAGING_DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
+          ODOO_MASTER_PASSWORD_STAGING: ${{ secrets.ODOO_MASTER_PASSWORD_STAGING }}
+          DB_USER_STAGING: ${{ secrets.DB_USER_STAGING }}
+          DB_PASSWORD_STAGING: ${{ secrets.DB_PASSWORD_STAGING }}
+          DB_HOST_STAGING: ${{ secrets.DB_HOST_STAGING }}
+        run: |
+          # Example: echo "$STAGING_DEPLOY_KEY" > deploy_key.pem && chmod 600 deploy_key.pem
+          # Example: export KUBECONFIG=/path/to/kubeconfig-staging (if using kubectl)
+          ./scripts/common/deploy_application.sh
+
+  deploy_production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy_staging
+    environment:
+      name: production
+      url: ${{ secrets.PRODUCTION_APP_URL }} # Define PRODUCTION_APP_URL in GitHub environment secrets
+    # Condition: Trigger on tags, and respect manual approval flag (GitHub Environments can enforce manual approval too)
+    if: success() && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      # Manual approval can be handled by GitHub Environments protection rules.
+      # If REQUIRE_MANUAL_APPROVAL_FOR_PRODUCTION_DEPLOYMENT is true and not handled by environment protection rules,
+      # an 'input' step equivalent would be needed or a separate manual trigger for this job.
+      # GitHub Actions doesn't have a direct `input` like Jenkins. Use environment protection rules for approval.
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deployment Tools
+        run: |
+          echo "Setting up deployment tools..."
+
+      - name: Tag Git Release (if tag is not the trigger, or to ensure)
+        # This step is usually run *before* this deployment job if the tag itself triggers the prod deployment.
+        # If tagging is part of the production deployment process itself:
+        if: env.REQUIRE_MANUAL_APPROVAL_FOR_PRODUCTION_DEPLOYMENT == 'true' # Example condition
+        env:
+          VERSION: ${{ github.ref_name }} # Assumes the tag is the version
+          TAG_MESSAGE: "Production Release ${{ github.ref_name }}"
+        run: |
+          # Ensure git user is configured if not already
+          # git config --global user.name "GitHub Actions"
+          # git config --global user.email "actions@github.com"
+          # ./scripts/common/tag_git_release.sh # This script would typically be run to *create* the tag that triggers this. Redundant if tag is trigger.
+          echo "Tagging is assumed to be the trigger for this job or handled prior."
+
+
+      - name: Deploy to Production
+        env:
+          DEPLOYMENT_ENV: production
+          APP_NAME: dfr-odoo-backend
+          IMAGE_TAG_OR_ARTIFACT_PATH: "${{ env.DOCKER_IMAGE_NAME }}:${{ github.ref_name }}" # Use Git tag for image tag
+          CONFIG_FILE_PATH: "./deployment/production/docker-compose.yml" # Example path, adjust
+          DEPLOYMENT_TYPE: "docker-compose" # or "kubernetes"
+          PRODUCTION_DEPLOY_KEY: ${{ secrets.PRODUCTION_DEPLOY_KEY }}
+          ODOO_MASTER_PASSWORD_PRODUCTION: ${{ secrets.ODOO_MASTER_PASSWORD_PRODUCTION }}
+          DB_USER_PRODUCTION: ${{ secrets.DB_USER_PRODUCTION }}
+          DB_PASSWORD_PRODUCTION: ${{ secrets.DB_PASSWORD_PRODUCTION }}
+          DB_HOST_PRODUCTION: ${{ secrets.DB_HOST_PRODUCTION }}
+        run: |
+          ./scripts/common/deploy_application.sh

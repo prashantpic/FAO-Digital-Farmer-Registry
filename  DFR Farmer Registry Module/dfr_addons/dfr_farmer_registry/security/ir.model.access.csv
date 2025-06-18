@@ -1,0 +1,54 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+# Access for DFR Farmer Model (dfr.farmer)
+access_dfr_farmer_enumerator,dfr.farmer enumerator access,model_dfr_farmer,dfr_rbac_config.group_dfr_enumerator,1,1,1,0
+access_dfr_farmer_supervisor,dfr.farmer supervisor access,model_dfr_farmer,dfr_rbac_config.group_dfr_supervisor,1,1,1,1
+access_dfr_farmer_national_admin,dfr.farmer national admin access,model_dfr_farmer,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_farmer_system_admin,dfr.farmer system admin access,model_dfr_farmer,base.group_system,1,1,1,1
+
+# Access for DFR Household Model (dfr.household)
+access_dfr_household_enumerator,dfr.household enumerator access,model_dfr_household,dfr_rbac_config.group_dfr_enumerator,1,1,1,0
+access_dfr_household_supervisor,dfr.household supervisor access,model_dfr_household,dfr_rbac_config.group_dfr_supervisor,1,1,1,1
+access_dfr_household_national_admin,dfr.household national admin access,model_dfr_household,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_household_system_admin,dfr.household system admin access,model_dfr_household,base.group_system,1,1,1,1
+
+# Access for DFR Household Member Model (dfr.household_member)
+access_dfr_household_member_enumerator,dfr.household_member enumerator access,model_dfr_household_member,dfr_rbac_config.group_dfr_enumerator,1,1,1,0
+access_dfr_household_member_supervisor,dfr.household_member supervisor access,model_dfr_household_member,dfr_rbac_config.group_dfr_supervisor,1,1,1,1
+access_dfr_household_member_national_admin,dfr.household_member national admin access,model_dfr_household_member,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_household_member_system_admin,dfr.household_member system admin access,model_dfr_household_member,base.group_system,1,1,1,1
+
+# Access for DFR Farm Model (dfr.farm)
+access_dfr_farm_enumerator,dfr.farm enumerator access,model_dfr_farm,dfr_rbac_config.group_dfr_enumerator,1,1,1,0
+access_dfr_farm_supervisor,dfr.farm supervisor access,model_dfr_farm,dfr_rbac_config.group_dfr_supervisor,1,1,1,1
+access_dfr_farm_national_admin,dfr.farm national admin access,model_dfr_farm,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_farm_system_admin,dfr.farm system admin access,model_dfr_farm,base.group_system,1,1,1,1
+
+# Access for DFR Plot Model (dfr.plot)
+access_dfr_plot_enumerator,dfr.plot enumerator access,model_dfr_plot,dfr_rbac_config.group_dfr_enumerator,1,1,1,0
+access_dfr_plot_supervisor,dfr.plot supervisor access,model_dfr_plot,dfr_rbac_config.group_dfr_supervisor,1,1,1,1
+access_dfr_plot_national_admin,dfr.plot national admin access,model_dfr_plot,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_plot_system_admin,dfr.plot system admin access,model_dfr_plot,base.group_system,1,1,1,1
+
+# Access for Supporting Lookup Models (generally readable by most, managed by admins)
+# dfr.education.level
+access_dfr_education_level_user,dfr.education_level user access,model_dfr_education_level,base.group_user,1,0,0,0
+access_dfr_education_level_admin,dfr.education_level admin access,model_dfr_education_level,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+# dfr.national.id.type
+access_dfr_national_id_type_user,dfr.national_id_type user access,model_dfr_national_id_type,base.group_user,1,0,0,0
+access_dfr_national_id_type_admin,dfr.national_id_type admin access,model_dfr_national_id_type,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+# dfr.consent.purpose
+access_dfr_consent_purpose_user,dfr.consent_purpose user access,model_dfr_consent_purpose,base.group_user,1,0,0,0
+access_dfr_consent_purpose_admin,dfr.consent_purpose admin access,model_dfr_consent_purpose,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+# dfr.relationship.type
+access_dfr_relationship_type_user,dfr.relationship_type user access,model_dfr_relationship_type,base.group_user,1,0,0,0
+access_dfr_relationship_type_admin,dfr.relationship_type admin access,model_dfr_relationship_type,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+# dfr.land.tenure.type
+access_dfr_land_tenure_type_user,dfr.land_tenure_type user access,model_dfr_land_tenure_type,base.group_user,1,0,0,0
+access_dfr_land_tenure_type_admin,dfr.land_tenure_type admin access,model_dfr_land_tenure_type,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+# dfr.crop.livestock.type
+access_dfr_crop_livestock_type_user,dfr.crop_livestock_type user access,model_dfr_crop_livestock_type,base.group_user,1,0,0,0
+access_dfr_crop_livestock_type_admin,dfr.crop_livestock_type admin access,model_dfr_crop_livestock_type,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+
+# Access for dfr.administrative.area (assuming from dfr_common_core, access managed there or here if needed)
+# access_dfr_administrative_area_user,dfr.administrative_area user access,model_dfr_administrative_area,base.group_user,1,0,0,0
+# access_dfr_administrative_area_admin,dfr.administrative_area admin access,model_dfr_administrative_area,dfr_rbac_config.group_dfr_national_admin,1,1,1,1

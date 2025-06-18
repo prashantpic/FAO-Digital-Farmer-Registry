@@ -1,0 +1,13 @@
+groups:
+- name: nginx_proxy_alerts
+  rules:
+  - alert: NginxHigh5xxErrorRate
+    expr: sum(rate(nginx_http_requests_total{status=~"5.."}[5m])) by (instance, job, country) / sum(rate(nginx_http_requests_total[5m])) by (instance, job, country) * 100 > 2
+    for: 5m
+    labels:
+      severity: warning
+      service: nginx
+    annotations:
+      summary: "High Nginx HTTP 5xx error rate on {{ $labels.instance }} (Country: {{ $labels.country }})"
+      description: "Nginx instance {{ $labels.instance }} is experiencing a 5xx error rate of {{ $value | printf \"%.2f\" }}%."
+  # Add alerts for Nginx upstream errors if applicable

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="dfr_data_tools.ImportProgressWidget" owl="1">
+        <div class="o_import_progress_widget">
+            <div t-if="props.jobId">
+                <div><strong>Import Progress:</strong></div>
+                <div class="progress mt-2 mb-2" style="height: 20px;">
+                    <div class="progress-bar" role="progressbar"
+                         t-attf-style="width: {{ state.progress }}%;"
+                         t-att-aria-valuenow="state.progress"
+                         aria-valuemin="0" aria-valuemax="100">
+                        <span t-if="state.progress > 10"><t t-esc="state.progress"/>%</span>
+                    </div>
+                </div>
+                <p><t t-esc="state.statusText"/></p>
+                <p t-if="state.jobState === 'error' &amp;&amp; state.errorMessage" class="text-danger">
+                    <strong>Error Summary:</strong> <pre><t t-esc="state.errorMessage"/></pre>
+                </p>
+                 <p t-if="state.jobState === 'done' &amp;&amp; state.failedRecords === 0" class="text-success">
+                    <strong>Import completed successfully!</strong>
+                </p>
+                <p t-if="state.jobState === 'done' &amp;&amp; state.failedRecords > 0" class="text-warning">
+                    <strong>Import completed with some errors. Please check the logs.</strong>
+                </p>
+            </div>
+            <div t-else="">
+                <p>Loading progress...</p>
+            </div>
+        </div>
+    </t>
+</templates>

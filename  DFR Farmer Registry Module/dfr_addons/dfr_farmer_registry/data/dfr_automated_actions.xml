@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Automated Actions (Server Actions / Automations) -->
+    <data noupdate="0">
+        <!--
+            Example: Automate status transition from 'potential_duplicate' back to 'pending_verification'
+            if a farmer is manually marked as NOT a duplicate via the wizard.
+            The wizard action_mark_as_not_duplicate already handles the status change and logging.
+            This section could be used for other automations, like:
+            - Notify admin on KYC rejection (as per SDS example)
+            - Automatically archive households/farms if linked farmer/head becomes deceased/archived
+        -->
+
+        <!-- Example: Notify Admin on KYC Rejection -->
+        <record id="action_notify_admin_on_kyc_rejection" model="base.automation">
+            <field name="name">DFR: Notify Admin on KYC Rejection</field>
+            <field name="model_id" ref="model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('kyc_status', '=', 'rejected')]</field>
+            <field name="filter_pre_domain">[('kyc_status', '!=', 'rejected')]</field> <!-- Trigger only when status *becomes* rejected -->
+            <field name="state">code</field>
+            <field name="code">
+# Python code to execute
+# E.g., record.message_post(body="KYC Rejected for Farmer: %s" % record.name)
+# Or create an activity for a specific user group
+# Ensure _logger is available if used: from odoo.addons.base.models.ir_cron import _logger
+_logger.info("Automation triggered: KYC rejected for Farmer %s (ID: %s)", record.name, record.id)
+
+# Find admin users or a specific user group (ensure group dfr_rbac_config.group_dfr_national_admin exists)
+admin_group = env.ref('dfr_rbac_config.group_dfr_national_admin', raise_if_not_found=False)
+if admin_group:
+    admin_users = admin_group.users
+    # Create activities or send emails to admin users
+    activity_type = env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+    if activity_type and admin_users:
+         for user in admin_users:
+             record.activity_schedule(
+                 activity_type_id=activity_type.id,
+                 summary=_('KYC Rejected for Farmer %s') % record.name,
+                 user_id=user.id,
+                 note=_('KYC for Farmer %s (%s) has been rejected. Review notes: %s') % (record.name, record.uid, record.kyc_review_notes or 'N/A')
+             )
+    else:
+        _logger.warning("DFR: KYC Rejection - Activity Type or Admin users not found. Posting message to chatter instead.")
+        record.message_post(
+            body=_("AUTOMATED NOTIFICATION: KYC Rejected for Farmer %s (%s). Review notes: %s") % (record.name, record.uid, record.kyc_review_notes or 'N/A'),
+            message_type='notification',
+            subtype_xmlid='mail.mt_comment', # Post as an internal note
+        )
+else:
+     _logger.warning("DFR: Admin group for KYC rejection notification not found. Posting message to chatter instead.")
+     record.message_post(
+        body=_("AUTOMATED NOTIFICATION: KYC Rejected for Farmer %s (%s). Review notes: %s") % (record.name, record.uid, record.kyc_review_notes or 'N/A'),
+        message_type='notification',
+        subtype_xmlid='mail.mt_comment',
+    )
+            </field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Example: Auto-set Household/Farm inactive if Head/Managing Farmer becomes deceased/archived/merged -->
+        <record id="action_auto_inactive_related_on_farmer_terminal_status" model="base.automation">
+            <field name="name">DFR: Auto-set Related Inactive on Farmer Terminal Status</field>
+            <field name="model_id" ref="model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('status', 'in', ('deceased', 'archived', 'merged_duplicate'))]</field>
+            <field name="filter_pre_domain">[('status', 'not in', ('deceased', 'archived', 'merged_duplicate'))]</field>
+            <field name="state">code</field>
+            <field name="code">
+# Ensure _logger is available if used: from odoo.addons.base.models.ir_cron import _logger
+_logger.info("Automation triggered: Farmer status changed to terminal state for Farmer %s (ID: %s)", record.name, record.id)
+
+# Find related households where this farmer is the head and set them dissolved
+households = env['dfr.household'].search([('head_of_household_id', '=', record.id), ('status', '!=', 'dissolved')])
+if households:
+    households.action_set_status_dissolved() # This method should exist on dfr.household
+    _logger.info("Set %s related households to Dissolved for farmer %s.", len(households), record.uid)
+    for hh in households:
+        hh.message_post(body=_("Household status set to 'Dissolved' because Head of Household %s (%s) status changed to %s.") % (record.name, record.uid, record.status))
+
+
+# Find related farms where this farmer is the managing farmer and set them inactive (archive them)
+# Assuming dfr.farm has an 'active' field or a status field to manage this
+farms = env['dfr.farm'].search([('farmer_id', '=', record.id)]) # Consider if farms also have an 'active' field
+if farms:
+    # Option 1: If 'active' field exists for logical archive
+    # farms.write({'active': False})
+    # Option 2: If a status field exists e.g. 'inactive'
+    # farms.write({'status': 'inactive'}) # Modify if farm has its own status flow
+    # For now, let's assume we just log this, as farm model in SDS doesn't specify status field or active field
+    _logger.info("%s related farms might need status update due to farmer %s status: %s.", len(farms), record.uid, record.status)
+    for farm_rec in farms:
+        farm_rec.message_post(body=_("Managing Farmer %s (%s) status changed to %s. Review farm status if needed.") % (record.name, record.uid, record.status))
+
+# Household members linked to this farmer record will remain linked, but the farmer record itself is now inactive.
+# No direct action on dfr.household_member needed unless specific business rule dictates otherwise.
+            </field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

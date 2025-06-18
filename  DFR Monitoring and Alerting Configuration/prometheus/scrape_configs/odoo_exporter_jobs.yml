@@ -1,0 +1,14 @@
+- job_name: 'dfr_odoo_app'
+  # Assuming a custom exporter or odoo_prometheus_exporter
+  metrics_path: /metrics
+  # Service discovery (e.g., file_sd or static_configs)
+  # Example: static_configs for a single instance
+  static_configs:
+    - targets: ['odoo_app_instance1_host:8070', 'odoo_app_instance2_host:8070'] # Placeholder for actual Odoo exporter endpoints
+      labels:
+        env: 'production' # Example label
+        country: 'CKI' # Example label
+  relabel_configs:
+    # Optional: Add instance-specific labels
+    - source_labels: [__address__]
+      target_label: instance

@@ -1,0 +1,43 @@
+{
+  "valid_default_farmer": {
+    "fullName": "Api Test Farmer Default",
+    "dateOfBirth": "1985-07-15",
+    "sex": "Male",
+    "contactPhone": "+11234567890",
+    "nationalIdType": "NATIONAL_ID",
+    "nationalIdNumber": "API-TEST-12345",
+    "village": "API Testville",
+    "householdUid": "HH-API-001",
+    "customFields": {
+        "primary_crop": "Maize",
+        "farm_size_hectares": 10.5,
+        "is_cooperative_member": true
+    }
+  },
+  "minimal_valid_farmer": {
+    "fullName": "Api Min Farmer",
+    "contactPhone": "+10987654321",
+    "village": "Minimalville"
+  },
+  "farmer_with_unicode_name": {
+    "fullName": "Joséphine Rémi Фармер",
+    "dateOfBirth": "1970-01-01",
+    "sex": "Female",
+    "contactPhone": "+442079460958",
+    "nationalIdType": "OTHER_ID",
+    "nationalIdNumber": "UNICODE-TEST-789",
+    "village": "Port Unicode",
+    "customFields": {
+        "notes": "Test with non-ASCII characters. Accès à l'eau."
+    }
+  },
+  "farmer_for_update": {
+    "uid_to_update": "existing-farmer-uid-to-be-updated",
+    "updated_fullName": "Api Updated Farmer Name",
+    "updated_contactPhone": "+15555555555",
+    "updated_customFields": {
+        "farm_size_hectares": 12.0,
+        "irrigation_source": "River"
+    }
+  }
+}

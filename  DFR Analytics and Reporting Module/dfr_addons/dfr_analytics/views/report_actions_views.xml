@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Sub-menu for Reports & Exports -->
+        <menuitem id="menu_dfr_analytics_reports_sub"
+                  name="Reports &amp; Exports"
+                  parent="menu_dfr_analytics_root"
+                  sequence="30"/>
+
+        <!-- Action to open Report Export Wizard (CSV/XLSX) -->
+        <record id="action_dfr_report_export_wizard" model="ir.actions.act_window">
+            <field name="name">Export DFR Data</field>
+            <field name="res_model">dfr.report.export.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem id="menu_dfr_report_export_wizard_item"
+                  name="Custom Data Export (CSV/XLSX)"
+                  parent="menu_dfr_analytics_reports_sub"
+                  action="action_dfr_report_export_wizard"
+                  sequence="10"/>
+
+        <!-- PDF Report: Farmer Statistics -->
+        <record id="action_report_farmer_statistics" model="ir.actions.report">
+            <field name="name">Farmer Statistics (PDF)</field>
+            <!-- Model is dfr.report.export.wizard to pass parameters if report is triggered from wizard context -->
+            <field name="model">dfr.report.export.wizard</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">dfr_analytics.report_farmer_statistics_pdf</field>
+            <field name="report_file">dfr_analytics.report_farmer_statistics_pdf</field>
+            <!-- binding_model_id is False as it's a general report, not bound to specific model actions by default -->
+            <field name="binding_model_id" eval="False"/>
+            <!-- Suggest a dynamic file name based on wizard context if available -->
+            <field name="print_report_name">(object.date_from and object.date_to and ('Farmer Statistics - %s to %s' % (object.date_from, object.date_to))) or ('Farmer Statistics - %s' % (object.date_from or object.date_to or 'General'))</field>
+        </record>
+
+         <menuitem id="menu_dfr_report_farmer_statistics_pdf"
+                  name="Farmer Statistics (PDF)"
+                  parent="menu_dfr_analytics_reports_sub"
+                  action="action_report_farmer_statistics"
+                  sequence="20"/>
+            
+        <!-- PDF Report: Dynamic Form Summary -->
+        <record id="action_report_dynamic_form_summary" model="ir.actions.report">
+            <field name="name">Dynamic Form Summary (PDF)</field>
+            <field name="model">dfr.report.export.wizard</field> 
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">dfr_analytics.report_dynamic_form_summary_pdf</field>
+            <field name="report_file">dfr_analytics.report_dynamic_form_summary_pdf</field>
+            <field name="binding_model_id" eval="False"/>
+            <field name="print_report_name">(object.dynamic_form_id and ('Form Summary - %s' % object.dynamic_form_id.name)) or 'Dynamic Form Summary'</field>
+        </record>
+
+        <menuitem id="menu_dfr_report_dynamic_form_summary_pdf"
+                  name="Dynamic Form Summary (PDF)"
+                  parent="menu_dfr_analytics_reports_sub"
+                  action="action_report_dynamic_form_summary"
+                  sequence="30"/>
+
+    </data>
+</odoo>

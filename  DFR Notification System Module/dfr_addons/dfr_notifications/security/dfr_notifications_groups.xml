@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <record model="ir.module.category" id="module_category_dfr_notifications">
+            <field name="name">DFR Notifications</field>
+            <field name="description">User access levels for DFR Notification System</field>
+            <field name="sequence">25</field>
+        </record>
+
+        <record id="group_dfr_notification_log_viewer" model="res.groups">
+            <field name="name">Notification Log Viewer</field>
+            <field name="category_id" ref="module_category_dfr_notifications"/>
+            <field name="comment">This group allows users to view notification logs.</field>
+        </record>
+
+        <!--
+        If a 'DFR National Administrator' group is defined in dfr_core_common (e.g., dfr_core_common.group_dfr_national_administrator)
+        and it should implicitly grant full access to notification management,
+        you might add implied_ids to it in its own module.
+        Example if we were defining a manager group here (but SDS points to an external admin group):
+        <record id="group_dfr_notification_manager" model="res.groups">
+            <field name="name">Notification Manager</field>
+            <field name="category_id" ref="module_category_dfr_notifications"/>
+            <field name="implied_ids" eval="[(4, ref('group_dfr_notification_log_viewer'))]"/>
+            <field name="comment">This group allows users to manage notification templates and gateway configurations, and view logs.</field>
+        </record>
+        -->
+
+    </data>
+</odoo>

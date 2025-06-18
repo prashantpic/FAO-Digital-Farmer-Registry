@@ -1,0 +1,150 @@
+/* DFR Farmer Self-Service Portal - Accessibility Styles (WCAG 2.1 AA) */
+
+/* 1.4.1 Use of Color: Ensure color is not the only means of conveying information.
+   (Handled by using text labels, icons with text, etc. in templates) */
+
+/* 1.4.3 Contrast (Minimum): Ensure sufficient color contrast.
+   AA Target: Text and images of text have a contrast ratio of at least 4.5:1.
+              Large text (18pt or 14pt bold) has a contrast ratio of at least 3:1.
+   (This CSS file can define variables or override Bootstrap to ensure compliance.
+    Actual color values depend on the theme and need to be checked with a contrast tool.)
+*/
+:root {
+    --dfr-text-color: #212529; /* Example: Dark grey for good contrast on light backgrounds */
+    --dfr-link-color: #0056b3; /* Example: Darker blue for links */
+    --dfr-background-color: #ffffff;
+    --dfr-error-text-color: #721c24; /* For error messages */
+    --dfr-error-background-color: #f8d7da;
+    --dfr-focus-outline-color: #007bff; /* Blue outline for focus */
+}
+
+body {
+    color: var(--dfr-text-color);
+    background-color: var(--dfr-background-color); /* Usually set in main CSS, ensure contrast */
+}
+
+a {
+    color: var(--dfr-link-color);
+}
+a:hover {
+    /* Ensure hover state also maintains contrast if color changes significantly */
+}
+
+/* 2.4.7 Focus Visible: Ensure keyboard focus indicators are clearly visible. */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex]:focus:not([tabindex="-1"]) { /* Exclude elements not part of tab order but programmatically focusable */
+    outline: 3px solid var(--dfr-focus-outline-color) !important; /* !important to override Bootstrap if necessary */
+    outline-offset: 1px;
+    box-shadow: 0 0 0 2px var(--dfr-background-color), 0 0 0 4px var(--dfr-focus-outline-color); /* Alternative style for filled look */
+}
+
+/* For browsers supporting :focus-visible, use it to avoid outlines on mouse clicks
+   while keeping them for keyboard navigation. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible:not([tabindex="-1"]) {
+    outline: 3px solid var(--dfr-focus-outline-color) !important;
+    outline-offset: 1px;
+    box-shadow: 0 0 0 2px var(--dfr-background-color), 0 0 0 4px var(--dfr-focus-outline-color);
+}
+
+/* Reset outline for elements that should not have it, if :focus-visible is not fully supported
+   and you want to avoid outlines on mouse clicks for certain elements.
+   However, it's generally better to have a consistent focus style.
+*/
+/*
+input[type="checkbox"]:focus,
+input[type="radio"]:focus {
+    outline-offset: 0px; // Adjust for checkboxes/radios if the default offset is too much
+}
+*/
+
+/* Styling for ARIA states, e.g., invalid fields */
+[aria-invalid="true"] {
+    border-color: #dc3545 !important; /* Bootstrap's danger color, ensure it has enough contrast */
+    background-color: #f8d7da; /* Light red background for invalid fields */
+}
+[aria-invalid="true"]:focus {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Error message text color for better contrast */
+.alert-danger, .text-danger {
+    color: var(--dfr-error-text-color); /* Ensure this has good contrast on its background */
+}
+.alert-danger {
+    background-color: var(--dfr-error-background-color);
+}
+
+
+/* 1.4.4 Resize Text: Ensure text can be resized up to 200% without loss of content or functionality.
+   (Primarily handled by using relative units like em, rem for text and layout, and responsive design.) */
+
+/* 1.4.11 Non-text Contrast: Visual information used to indicate states and boundaries of UI components
+   must have a contrast ratio of at least 3:1 against adjacent colors.
+   (e.g., input borders, focus indicators, checkbox/radio button borders) */
+.form-control, .form-select {
+    border: 1px solid #6c757d; /* Example: A darker border for better contrast than default Bootstrap light grey */
+}
+
+/* Skip to main content link - visually hidden until focused */
+.skip-to-main {
+    position: absolute;
+    left: -9999px; /* Move off-screen */
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9999; /* Ensure it's on top when focused */
+    padding: 10px 15px;
+    background-color: #000; /* High contrast background */
+    color: #fff; /* High contrast text */
+    text-decoration: none;
+    border-radius: 3px;
+}
+
+.skip-to-main:focus,
+.skip-to-main:active {
+    left: 10px; /* Bring on-screen when focused */
+    top: 10px;
+    width: auto;
+    height: auto;
+    clip: auto; /* Make visible */
+}
+
+/* Ensure sufficient line height and spacing for readability (1.4.12 Text Spacing) */
+body {
+    /* These are general guidelines, adjust as per design.
+       Line height (line spacing) to at least 1.5 times the font size;
+       Spacing following paragraphs to at least 2 times the font size;
+       Letter spacing (tracking) to at least 0.12 times the font size;
+       Word spacing to at least 0.16 times the font size.
+    */
+    /* line-height: 1.6; (Already in main.css, ensure it's sufficient) */
+}
+
+p + p {
+    /* margin-top: 2em; Example for paragraph spacing if default Bootstrap isn't enough */
+}
+
+/*
+  Other considerations (often handled in HTML/JS or server-side):
+  - 2.1.1 Keyboard: All functionality available from a keyboard.
+  - 2.1.2 No Keyboard Trap: No keyboard traps.
+  - 2.2.1 Timing Adjustable: If any time limits, they are adjustable.
+  - 2.2.2 Pause, Stop, Hide: For moving, blinking, scrolling, or auto-updating information.
+  - 2.4.3 Focus Order: Logical focus order.
+  - 2.4.4 Link Purpose (In Context): Link text understandable in context.
+  - 3.2.1 On Focus: No change of context on focus.
+  - 3.2.2 On Input: No change of context on input unless user advised.
+  - 3.3.1 Error Identification: Errors clearly identified.
+  - 3.3.2 Labels or Instructions: Labels and instructions provided.
+*/

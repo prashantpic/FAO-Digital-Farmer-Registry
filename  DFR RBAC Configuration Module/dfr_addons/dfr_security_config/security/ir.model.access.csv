@@ -1,0 +1,56 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+    
+    # --- DFR Farmer Registry Models ---
+    # Model: dfr_farmer_registry.farmer (Assuming model name in dfr_farmer_registry module is 'dfr.farmer')
+    access_dfr_farmer_super_admin,dfr.farmer.super_admin,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_super_admin,1,1,1,1
+    access_dfr_farmer_national_admin,dfr.farmer.national_admin,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_national_admin,1,1,1,1
+    access_dfr_farmer_supervisor,dfr.farmer.supervisor,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_supervisor,1,1,1,0
+    access_dfr_farmer_enumerator,dfr.farmer.enumerator,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_enumerator,1,1,1,0
+    access_dfr_farmer_portal_user_read,dfr.farmer.portal_user.read,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_farmer_portal_user,1,0,0,0
+    access_dfr_farmer_support_team_read,dfr.farmer.support.read,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_support_team,1,0,0,0
+    access_dfr_farmer_policy_analyst_read,dfr.farmer.policy.read,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_policy_analyst,1,0,0,0
+    access_dfr_farmer_it_team,dfr.farmer.it_team,model_dfr_farmer_registry_farmer,dfr_security_config.group_dfr_it_team,1,1,1,1
+
+    # Model: dfr_farmer_registry.household (Assuming model name 'dfr.household')
+    access_dfr_household_super_admin,dfr.household.super_admin,model_dfr_farmer_registry_household,dfr_security_config.group_dfr_super_admin,1,1,1,1
+    access_dfr_household_national_admin,dfr.household.national_admin,model_dfr_farmer_registry_household,dfr_security_config.group_dfr_national_admin,1,1,1,1
+    access_dfr_household_supervisor,dfr.household.supervisor,model_dfr_farmer_registry_household,dfr_security_config.group_dfr_supervisor,1,1,1,0
+    access_dfr_household_enumerator,dfr.household.enumerator,model_dfr_farmer_registry_household,dfr_security_config.group_dfr_enumerator,1,1,1,0
+    # ... other roles for household
+
+    # Model: dfr_farmer_registry.plot (Assuming model name 'dfr.plot')
+    access_dfr_plot_super_admin,dfr.plot.super_admin,model_dfr_farmer_registry_plot,dfr_security_config.group_dfr_super_admin,1,1,1,1
+    access_dfr_plot_national_admin,dfr.plot.national_admin,model_dfr_farmer_registry_plot,dfr_security_config.group_dfr_national_admin,1,1,1,1
+    access_dfr_plot_supervisor,dfr.plot.supervisor,model_dfr_farmer_registry_plot,dfr_security_config.group_dfr_supervisor,1,1,1,0
+    access_dfr_plot_enumerator,dfr.plot.enumerator,model_dfr_farmer_registry_plot,dfr_security_config.group_dfr_enumerator,1,1,1,0
+    # ... other roles for plot
+
+    # --- DFR Dynamic Forms Models ---
+    # Model: dfr_dynamic_forms.form_template (Assuming model name 'dfr.form.template')
+    access_dfr_form_template_super_admin,dfr.form_template.super_admin,model_dfr_dynamic_forms_form_template,dfr_security_config.group_dfr_super_admin,1,1,1,1
+    access_dfr_form_template_national_admin,dfr.form_template.national_admin,model_dfr_dynamic_forms_form_template,dfr_security_config.group_dfr_national_admin,1,1,1,1
+    access_dfr_form_template_supervisor_read,dfr.form_template.supervisor.read,model_dfr_dynamic_forms_form_template,dfr_security_config.group_dfr_supervisor,1,0,0,0
+    access_dfr_form_template_enumerator_read,dfr.form_template.enumerator.read,model_dfr_dynamic_forms_form_template,dfr_security_config.group_dfr_enumerator,1,0,0,0
+    # ... other roles for form_template
+
+    # Model: dfr_dynamic_forms.form_submission (Assuming model name 'dfr.form.submission')
+    access_dfr_form_submission_super_admin,dfr.form_submission.super_admin,model_dfr_dynamic_forms_form_submission,dfr_security_config.group_dfr_super_admin,1,1,1,1
+    access_dfr_form_submission_national_admin,dfr.form_submission.national_admin,model_dfr_dynamic_forms_form_submission,dfr_security_config.group_dfr_national_admin,1,1,1,1
+    access_dfr_form_submission_supervisor,dfr.form_submission.supervisor,model_dfr_dynamic_forms_form_submission,dfr_security_config.group_dfr_supervisor,1,1,0,0 
+    access_dfr_form_submission_enumerator_rc,dfr.form_submission.enumerator.rc,model_dfr_dynamic_forms_form_submission,dfr_security_config.group_dfr_enumerator,1,0,1,0
+    access_dfr_form_submission_farmer_portal_user_rc,dfr.form_submission.farmer_portal.rc,model_dfr_dynamic_forms_form_submission,dfr_security_config.group_dfr_farmer_portal_user,1,0,1,0 
+    # ... other roles for form_submission
+
+    # --- DFR Common Core Models (Example: Administrative Area if managed directly by DFR roles) ---
+    # Model: dfr_common_core.administrative_area (Assuming model name 'dfr.administrative.area')
+    # access_dfr_admin_area_national_admin,dfr.admin_area.national_admin,model_dfr_common_core_administrative_area,dfr_security_config.group_dfr_national_admin,1,1,1,1
+    # access_dfr_admin_area_all_users_read,dfr.admin_area.all_users_read,model_dfr_common_core_administrative_area,base.group_user,1,0,0,0
+
+    # --- Other DFR module models as they are defined ---
+    # Example: Notification Templates if there's a model 'dfr.notification.template'
+    # access_dfr_notification_template_national_admin,dfr.notification_template.national_admin,model_dfr_notification_template,dfr_security_config.group_dfr_national_admin,1,1,1,1
+
+    # Note: Ensure `model_module_name_model_name_with_underscores` matches Odoo's convention for `ir.model`'s `model` field.
+    # The `model_id/id` column should reference the XML ID of the `ir.model` record for the target model.
+    # For example, for a model `dfr.farmer` in module `dfr_farmer_registry`, the `ir.model` XML ID is typically `model_dfr_farmer_registry_dfr_farmer`.
+    # It is crucial that the `depends` in `__manifest__.py` includes all modules whose models are listed here.

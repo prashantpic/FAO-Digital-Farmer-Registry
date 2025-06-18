@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="dfr_analytics.MapViewComponent" owl="1">
+        <div class="o_dfr_map_view container-fluid p-3">
+            <h2 class="mb-3">Farmer &amp; Plot Locations</h2>
+             <t t-if="state.loading">
+                <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading Map Data...</span>
+                    </div>
+                </div>
+            </t>
+            <t t-elif="state.error">
+                <div class="alert alert-danger" role="alert">
+                    Error loading map: <t t-esc="state.error"/>
+                </div>
+            </t>
+            <t t-else="">
+                 <!-- Placeholder for Map Filters if needed in future -->
+                 <!-- <div class="map_filters alert alert-light p-3 mb-3">
+                      <h5>Map Filters</h5>
+                      Add filter fields here
+                 </div> -->
+
+                <div id="dfr-map-container" t-ref="mapContainer" class="shadow-sm border rounded" style="height: 600px; width: 100%;">
+                     <!-- Leaflet map will be rendered inside this div -->
+                     <t t-if="!state.loading and (!state.geoData or state.geoData.length === 0) and !state.error">
+                        <div class="d-flex justify-content-center align-items-center h-100 text-muted">
+                            <p>No geographical data to display for the current selection.</p>
+                        </div>
+                     </t>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

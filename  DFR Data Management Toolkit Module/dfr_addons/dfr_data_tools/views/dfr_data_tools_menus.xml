@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Main DFR Menu (if not already defined in dfr_core_common or dfr_farmer_registry) -->
+        <menuitem id="menu_dfr_root" name="DFR" sequence="10" web_icon="dfr_data_tools,static/description/icon.png"/>
+
+        <!-- Data Management Submenu -->
+        <menuitem id="menu_dfr_data_management" name="Data Management" parent="menu_dfr_root" sequence="30"/>
+
+        <menuitem id="menu_action_bulk_data_import_wizard"
+                  name="Bulk Data Import"
+                  parent="menu_dfr_data_management"
+                  action="dfr_data_tools.action_bulk_data_import_wizard_launch"
+                  sequence="10"/>
+
+        <menuitem id="menu_action_data_import_job_history"
+                  name="Import Job History"
+                  parent="menu_dfr_data_management"
+                  action="dfr_data_tools.action_data_import_job_tree"
+                  sequence="20"/>
+        
+        <!-- Standard Odoo export is available on list views, no specific menu needed unless custom export reports are built -->
+
+    </data>
+</odoo>

@@ -1,0 +1,40 @@
+/* DFR Admin Portal Master Theme CSS */
+
+/* Example: Customizing the main DFR application icon color in the app drawer if possible */
+/* .o_app[data-menu-xmlid="dfr_admin_portal_master.menu_dfr_root"] .o_app_icon {
+    background-color: #007bff; /* Example DFR brand color */
+/* } */
+
+/* Example: Consistent header styling for DFR sections (if identifiable) */
+/* This would require specific selectors which might be hard to generalize without knowing sub-module structure */
+/* .o_content .dfr_section_header h1 {
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 5px;
+} */
+
+/* Example: Styling for a potential master dashboard */
+/* .o_form_view.dfr_master_dashboard .oe_title h1 {
+    font-size: 24px;
+    color: #0056b3;
+} */
+
+/* Example: More noticeable styling for DFR-specific buttons or elements */
+/* .btn-dfr-primary {
+    background-color: #0069d9;
+    border-color: #0062cc;
+    color: white;
+}
+.btn-dfr-primary:hover {
+    background-color: #005cbf;
+    border-color: #0056b3;
+} */
+
+/* Ensure a professional and clean look */
+body {
+    /* Example: font-family: 'Roboto', sans-serif; */
+}
+
+/* Add more global styles as needed for DFR branding and UI consistency */
+/* For example, main navigation bar overrides, if Odoo theming allows for it easily */
+/* .o_main_navbar { ... } */

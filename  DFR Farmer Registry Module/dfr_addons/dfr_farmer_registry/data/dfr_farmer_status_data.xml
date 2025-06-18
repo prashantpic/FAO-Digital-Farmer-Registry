@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Farmer statuses are defined as a fields.Selection directly in the 'dfr.farmer' model (dfr_farmer.py).
+            Therefore, this data file is not strictly essential for populating status options
+            unless a separate 'dfr.farmer.status' model with more complex attributes (e.g., descriptions, color-coding)
+            was to be implemented.
+
+            As per SDS Section 6.2: "For this SDS, farmer statuses are defined as fields.Selection directly
+            in dfr_farmer.py, so this specific data file is not essential unless more complex status attributes are needed."
+
+            This file is included to match the specified module structure.
+            If a dedicated model 'dfr.farmer.status' were used, it would be populated here.
+            Example:
+            <record id="farmer_status_pending" model="dfr.farmer.status">
+                <field name="key">pending_verification</field>
+                <field name="name">Pending Verification</field>
+            </record>
+        -->
+    </data>
+</odoo>

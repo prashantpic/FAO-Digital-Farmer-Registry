@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+        This file is intended for pre-populating or configuring available field types
+        if they were managed as separate data records (e.g., a 'dfr.form.field.type' model).
+        However, as per the current SDS, 'field_type' is a Selection field directly on 'dfr.form.field'.
+
+        The sequence 'dfr.form.version.sequence' is defined in 'ir_sequence_data.xml'.
+
+        If other data related to field types (not sequences) were needed, it would go here.
+        For now, this file remains minimal or empty as field types are hardcoded in the selection.
+        If, for example, certain field types had default icons or specific JS behaviors configured via data,
+        those records would be defined here.
+        -->
+
+        <!-- Example: If there were a model dfr.form.field.type.config -->
+        <!--
+        <record id="field_type_config_text" model="dfr.form.field.type.config">
+            <field name="type_key">text</field>
+            <field name="default_icon">fa-font</field>
+            <field name="is_default">True</field>
+        </record>
+        <record id="field_type_config_number" model="dfr.form.field.type.config">
+            <field name="type_key">number</field>
+            <field name="default_icon">fa-hashtag</field>
+        </record>
+        -->
+    </data>
+</odoo>

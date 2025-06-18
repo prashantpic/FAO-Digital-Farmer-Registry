@@ -1,0 +1,226 @@
+<odoo>
+    <data noupdate="1">
+
+        <!-- Server Action: Notify Farmer on Successful Registration (Active Status) -->
+        <record id="action_server_notify_farmer_registration_success" model="ir.actions.server">
+            <field name="name">Server Action: Notify Farmer Registration Success</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record:
+    env['workflow.log'].log_event(
+        workflow_name='Notification Trigger',
+        message=f"Preparing successful registration notification for farmer {record.name} (UID: {getattr(record, 'farmer_uid', 'N/A')}).",
+        level='info',
+        record=record
+    )
+    template_key = 'success_farmer_sms_template_id' # Example, could be email too
+    # This assumes 'farmer_registration' is the workflow_key in orchestration.rule.config
+    notification_template_id_str = env['orchestration.rule.config'].get_config_value(
+       'farmer_registration', 
+       template_key
+    )
+    if notification_template_id_str:
+        try:
+            notification_template_id = int(notification_template_id_str)
+            # Placeholder for calling the notification engine
+            # env['dfr.notification.engine'].trigger_notification(
+            #    record, # Farmer record
+            #    notification_template_id,
+            #    {'farmer_name': record.name, 'farmer_uid': getattr(record, 'farmer_uid', 'N/A')}
+            # )
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Attempted to trigger 'Successful Registration' notification using template ID {notification_template_id_str} for farmer {record.name}.",
+                level='debug',
+                record=record
+            )
+        except ValueError:
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Invalid notification template ID ({template_key}: {notification_template_id_str}) for successful farmer registration.",
+                level='error',
+                record=record
+            )
+        except Exception as e:
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Error triggering 'Successful Registration' notification for {record.name}: {str(e)}",
+                level='error',
+                record=record
+            )
+    else:
+        env['workflow.log'].log_event(
+            workflow_name='Notification Trigger',
+            message=f"No notification template ID configured ({template_key}) for successful farmer registration.",
+            level='warning',
+            record=record
+        )
+            </field>
+        </record>
+
+        <!-- Automated Action: On Farmer Registration Success (Status Active on Create or Write) -->
+        <!-- This reuses the automation_farmer_activated from farmer_lifecycle_workflows.xml if notification is part of activation.
+             If a separate notification is needed specifically on first-time activation vs. any activation, this can be different.
+             The SDS implies it's part of becoming 'active'.
+             However, if it's strictly on creation and becoming active, the trigger can be on_create_or_write.
+             Let's use the same `action_server_farmer_activated` which includes notification logic.
+             If a different template or logic is needed ONLY for the first registration success, then a new server action and automation is required.
+             The current SDS suggests "Farmer Status Change to 'Active'" handles this via `action_server_farmer_activated`.
+             Let's assume the template configured for `active_status_notification_template_id` is the "Welcome/Activation" one.
+        -->
+
+
+        <!-- Server Action: Notify Farmer of Portal Submission Received -->
+        <record id="action_server_notify_portal_submission_received" model="ir.actions.server">
+            <field name="name">Server Action: Notify Portal Submission Received</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record:
+    env['workflow.log'].log_event(
+        workflow_name='Notification Trigger',
+        message=f"Preparing portal submission confirmation for farmer {record.name} (UID: {getattr(record, 'farmer_uid', 'N/A')}).",
+        level='info',
+        record=record
+    )
+    template_key = 'portal_submission_received_template_id'
+    notification_template_id_str = env['orchestration.rule.config'].get_config_value(
+       'portal_submission', 
+       template_key
+    )
+    if notification_template_id_str:
+        try:
+            notification_template_id = int(notification_template_id_str)
+            # env['dfr.notification.engine'].trigger_notification(
+            #    record, # Farmer record
+            #    notification_template_id,
+            #    {'farmer_name': record.name, 'submission_id': record.id} # Example context
+            # )
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Attempted to trigger 'Portal Submission Received' notification using template ID {notification_template_id_str} for farmer {record.name}.",
+                level='debug',
+                record=record
+            )
+        except ValueError:
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Invalid notification template ID ({template_key}: {notification_template_id_str}) for portal submission confirmation.",
+                level='error',
+                record=record
+            )
+        except Exception as e:
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Error triggering 'Portal Submission Received' notification for {record.name}: {str(e)}",
+                level='error',
+                record=record
+            )
+    else:
+        env['workflow.log'].log_event(
+            workflow_name='Notification Trigger',
+            message=f"No notification template ID configured ({template_key}) for portal submission confirmation.",
+            level='warning',
+            record=record
+        )
+            </field>
+        </record>
+
+        <!-- Automated Action: On Farmer Self-Registration Submission (Source Portal, Status Pending Verification) -->
+        <record id="automation_notify_portal_submission_received" model="base.automation">
+            <field name="name">Automated: Notify Portal Submission Received</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="trigger">on_create_or_write</field> <!-- Handles both creation and updates to this state -->
+            <field name="filter_domain">[('source', '=', 'portal'), ('status', '=', 'pending_verification')]</field>
+            <!-- To avoid re-sending if other fields change while in pending_verification from portal: -->
+            <field name="filter_pre_domain">['|', ('source', '!=', 'portal'), ('status', '!=', 'pending_verification')]</field>
+            <field name="action_server_id" ref="action_server_notify_portal_submission_received"/>
+        </record>
+
+
+        <!-- Server Action: Notify Program Eligibility -->
+        <record id="action_server_notify_program_eligibility" model="ir.actions.server">
+            <field name="name">Server Action: Notify Program Eligibility</field>
+            <field name="model_id" ref="dfr_dynamic_forms.model_dfr_form_submission"/> <!-- Assuming eligibility is on dfr.form.submission -->
+            <field name="state">code</field>
+            <field name="code">
+if record: # record is a dfr.form.submission
+    # Assuming dfr.form.submission has a Many2one to dfr.farmer named 'farmer_id'
+    farmer = getattr(record, 'farmer_id', None)
+    if not farmer:
+        env['workflow.log'].log_event(
+            workflow_name='Notification Trigger',
+            message=f"Cannot send eligibility notification: Farmer not found on form submission ID {record.id}.",
+            level='error',
+            record=record
+        )
+        return
+
+    env['workflow.log'].log_event(
+        workflow_name='Notification Trigger',
+        message=f"Preparing program eligibility notification for farmer {farmer.name} (Submission ID: {record.id}).",
+        level='info',
+        record=record, # Log against submission, but could also log against farmer
+    )
+    
+    # Example: Program name could be from the form submission or a related dynamic form definition
+    program_name = getattr(record, 'program_name', 'the relevant program') # Placeholder
+    template_key = 'program_eligibility_notification_template_id' # Generic key
+    # Alternative: template key could be dynamic based on program: f"{program_name}_eligibility_template_id"
+    
+    notification_template_id_str = env['orchestration.rule.config'].get_config_value(
+       'program_notifications', # Workflow key for program notifications
+       template_key
+    )
+    if notification_template_id_str:
+        try:
+            notification_template_id = int(notification_template_id_str)
+            # env['dfr.notification.engine'].trigger_notification(
+            #    farmer, # Target is the farmer
+            #    notification_template_id,
+            #    {'farmer_name': farmer.name, 'program_name': program_name, 'submission_id': record.id}
+            # )
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Attempted to trigger 'Program Eligibility' notification (template ID {notification_template_id_str}) for farmer {farmer.name} via submission {record.id}.",
+                level='debug',
+                record=record
+            )
+        except ValueError:
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Invalid notification template ID ({template_key}: {notification_template_id_str}) for program eligibility.",
+                level='error',
+                record=record
+            )
+        except Exception as e:
+            env['workflow.log'].log_event(
+                workflow_name='Notification Trigger',
+                message=f"Error triggering 'Program Eligibility' notification for farmer {farmer.name} (submission {record.id}): {str(e)}",
+                level='error',
+                record=record
+            )
+    else:
+        env['workflow.log'].log_event(
+            workflow_name='Notification Trigger',
+            message=f"No notification template ID configured ({template_key}) for program eligibility.",
+            level='warning',
+            record=record
+        )
+            </field>
+        </record>
+
+        <!-- Automated Action: On Program Eligibility Confirmed -->
+        <!-- This assumes a field like 'is_eligible_for_subsidy' exists on 'dfr.form.submission' -->
+        <record id="automation_notify_program_eligibility" model="base.automation">
+            <field name="name">Automated: Notify Program Eligibility</field>
+            <field name="model_id" ref="dfr_dynamic_forms.model_dfr_form_submission"/>
+            <field name="trigger">on_write</field>
+            <field name="filter_domain">[('is_eligible_for_subsidy', '=', True)]</field> <!-- Example field name -->
+            <field name="filter_pre_domain">[('is_eligible_for_subsidy', '=', False)]</field>
+            <field name="action_server_id" ref="action_server_notify_program_eligibility"/>
+        </record>
+
+    </data>
+</odoo>

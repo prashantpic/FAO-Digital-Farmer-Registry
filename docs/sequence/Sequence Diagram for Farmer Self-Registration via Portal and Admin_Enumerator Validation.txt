@@ -1,0 +1,129 @@
+sequenceDiagram
+    actor "Farmer (User's Browser)" as userbrowser
+    participant "Farmer Self-Service Portal Module (Odoo)" as dfrfarmerportal
+    participant "Farmer Registry Module (Odoo)" as dfrfarmerregistry
+    participant "Notification System Module (Odoo)" as dfrnotifications
+    participant "Admin/Supervisor (Odoo Admin Portal)" as dfrodoopresentationadmin
+    participant "Enumerator (DFR Mobile App)" as dfrmobileapp
+    participant "DFR API Services Module (Odoo)" as dfrapiservices
+
+    note over dfrfarmerportal: Farmer Self-Service Portal (REQ-FSSP-001) allows farmers to submit pre-registration data.
+    userbrowser-dfrfarmerportal: 1. GET /dfr/register (Request self-registration page)
+    activate dfrfarmerportal
+    dfrfarmerportal--userbrowser: HTTP 200 OK (Render registration form REQ-FSSP-003)
+    deactivate dfrfarmerportal
+
+    userbrowser-dfrfarmerportal: 2. POST /dfr/register/submit (Submit pre-registration data: KYC fields)
+    activate dfrfarmerportal
+    dfrfarmerportal-dfrfarmerportal: 2.1. validatePreRegistrationData(formData) [Client & Server-side]
+    activate dfrfarmerportal
+    dfrfarmerportal--dfrfarmerportal: validationResult
+    deactivate dfrfarmerportal
+
+    alt 2.2. Validation Failed
+        dfrfarmerportal--userbrowser: 2.2.1. HTTP 400 Bad Request (Render form with errors)
+    else 2.3. Validation Succeeded
+        note over dfrfarmerregistry: Submitted data populates Core Farmer Registry (REQ-FSSP-004), creating a draft/pending record (REQ-FHR-009).
+        dfrfarmerportal-dfrfarmerregistry: 2.3.1. createPreRegisteredFarmer(formData) (REQ-FSSP-004, REQ-FHR-009)
+        activate dfrfarmerregistry
+        dfrfarmerregistry-dfrfarmerregistry: 2.3.1.1. runDeDuplicationChecks(formData) (REQ-FHR-012, REQ-FHR-013)
+        activate dfrfarmerregistry
+        dfrfarmerregistry--dfrfarmerregistry: deDuplicationResult
+        deactivate dfrfarmerregistry
+        dfrfarmerregistry-dfrfarmerregistry: 2.3.1.2. IF Potential Duplicate Found: flagAsPotentialDuplicate(farmerRecord)
+        dfrfarmerregistry-dfrfarmerregistry: 2.3.1.3. createFarmerRecordInDB(status='Pending Verification')
+        activate dfrfarmerregistry
+        dfrfarmerregistry--dfrfarmerregistry: createdFarmerRecord
+        deactivate dfrfarmerregistry
+        dfrfarmerregistry--dfrfarmerportal: farmerRecordDetails (id, status='Pending Verification')
+        deactivate dfrfarmerregistry
+
+        note over dfrnotifications: Notifications alert Admins/Supervisors of new self-registrations for review (REQ-FSSP-005).
+        dfrfarmerportal-dfrnotifications: 2.3.2. triggerSelfRegistrationNotification(farmerRecordDetails) (REQ-FSSP-005)
+        activate dfrnotifications
+        dfrnotifications-dfrnotifications: 2.3.2.1. sendAlertToAdminSupervisor(farmerRecordDetails) [Email/Odoo Internal]
+        deactivate dfrnotifications
+
+        dfrfarmerportal--userbrowser: 2.3.3. HTTP 200 OK (Registration submitted successfully, display reference)
+    end
+    deactivate dfrfarmerportal
+
+    note over dfrodoopresentationadmin: Admin Portal provides interface for review, validation, and assignment (REQ-5-006).
+    dfrodoopresentationadmin-dfrfarmerregistry: 3. fetchPendingSelfRegistrations()
+    activate dfrfarmerregistry
+    dfrfarmerregistry--dfrodoopresentationadmin: listOfPendingRegistrations
+    deactivate dfrfarmerregistry
+
+    dfrodoopresentationadmin-dfrfarmerregistry: 4. viewSelfRegistrationDetails(submissionId)
+    activate dfrfarmerregistry
+    dfrfarmerregistry--dfrodoopresentationadmin: detailedFarmerRecord
+    deactivate dfrfarmerregistry
+
+    alt 5.1. Path 1: Direct Validation by Admin/Supervisor
+        dfrodoopresentationadmin-dfrodoopresentationadmin: 5.1.1. reviewAndValidateData(detailedFarmerRecord)
+        activate dfrodoopresentationadmin
+        dfrodoopresentationadmin--dfrodoopresentationadmin: validatedData, newStatus
+        deactivate dfrodoopresentationadmin
+        dfrodoopresentationadmin-dfrfarmerregistry: 5.1.2. updateFarmerRecord(farmerId, validatedData, newStatus)
+        activate dfrfarmerregistry
+        dfrfarmerregistry-dfrfarmerregistry: 5.1.2.1. logStatusChange(farmerId, oldStatus, newStatus, adminUserId) (REQ-FHR-010)
+        activate dfrfarmerregistry
+        deactivate dfrfarmerregistry
+        opt 5.1.2.2. IF newStatus=='Active': triggerFarmerActivatedNotification(farmerId)
+            dfrfarmerregistry-dfrnotifications: triggerFarmerActivatedNotification(farmerId)
+            activate dfrnotifications
+            dfrnotifications-dfrnotifications: 5.1.2.2.1. sendFarmerActivationAlert(farmerDetails)
+            deactivate dfrnotifications
+        end
+        dfrfarmerregistry--dfrodoopresentationadmin: updateSuccessResponse
+        deactivate dfrfarmerregistry
+    else 5.2. Path 2: Assign to Enumerator for Validation
+        dfrodoopresentationadmin-dfrfarmerregistry: 5.2.1. assignSelfRegistrationToEnumerator(submissionId, enumeratorId)
+        activate dfrfarmerregistry
+        dfrfarmerregistry-dfrfarmerregistry: 5.2.1.1. updateRegistrationAssignment(submissionId, enumeratorId, status='Pending Enumerator Validation')
+        activate dfrfarmerregistry
+        deactivate dfrfarmerregistry
+        dfrfarmerregistry--dfrodoopresentationadmin: assignmentSuccessResponse
+        deactivate dfrfarmerregistry
+
+        dfrfarmerregistry-dfrnotifications: 5.2.2. triggerEnumeratorAssignmentNotification(submissionId, enumeratorId)
+        activate dfrnotifications
+        dfrnotifications-dfrnotifications: 5.2.2.1. sendAlertToEnumerator(assignmentDetails) [Push/Odoo Internal]
+        deactivate dfrnotifications
+
+        dfrmobileapp-dfrapiservices: 5.2.3. syncAssignedRegistrations()
+        activate dfrapiservices
+        dfrapiservices-dfrfarmerregistry: 5.2.3.1. getAssignedRegistrationsForEnumerator(enumeratorId)
+        activate dfrfarmerregistry
+        dfrfarmerregistry--dfrapiservices: assignedRegistrationsData
+        deactivate dfrfarmerregistry
+        dfrapiservices--dfrmobileapp: syncResponseWithAssignedData
+        deactivate dfrapiservices
+
+        note over dfrmobileapp: Mobile app enables enumerators to validate and enrich assigned self-registrations in the field (REQ-4-012).
+        dfrmobileapp-dfrmobileapp: 5.2.4. viewAssignedRegistration(submissionId)
+        activate dfrmobileapp
+        deactivate dfrmobileapp
+        dfrmobileapp-dfrmobileapp: 5.2.5. performFieldValidationAndEnrichment(formData) (REQ-4-012)
+        activate dfrmobileapp
+        dfrmobileapp--dfrmobileapp: validatedData, newStatus
+        deactivate dfrmobileapp
+
+        dfrmobileapp-dfrapiservices: 5.2.6. submitValidatedRegistration(farmerId, validatedData, newStatus)
+        activate dfrapiservices
+        dfrapiservices-dfrfarmerregistry: 5.2.6.1. updateFarmerRecordFromMobile(farmerId, validatedData, newStatus)
+        activate dfrfarmerregistry
+        dfrfarmerregistry-dfrfarmerregistry: 5.2.6.1.1. logStatusChange(farmerId, oldStatus, newStatus, enumeratorUserId)
+        activate dfrfarmerregistry
+        deactivate dfrfarmerregistry
+        opt 5.2.6.1.2. IF newStatus=='Active': triggerFarmerActivatedNotification(farmerId)
+            dfrfarmerregistry-dfrnotifications: triggerFarmerActivatedNotification(farmerId)
+            activate dfrnotifications
+            dfrnotifications-dfrnotifications: 5.2.6.1.2.1. sendFarmerActivationAlert(farmerDetails)
+            deactivate dfrnotifications
+        end
+        dfrfarmerregistry--dfrapiservices: updateSuccessResponse
+        deactivate dfrfarmerregistry
+        dfrapiservices--dfrmobileapp: syncSuccessConfirmation
+        deactivate dfrapiservices
+    end

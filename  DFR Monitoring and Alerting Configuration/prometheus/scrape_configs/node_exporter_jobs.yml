@@ -1,0 +1,7 @@
+- job_name: 'dfr_host_nodes'
+  metrics_path: /metrics
+  static_configs:
+    - targets: ['host1_ip:9100', 'host2_ip:9100'] # Placeholder for actual server IPs running Node Exporter
+      labels:
+        env: 'production'
+        role: 'app_server' # Example

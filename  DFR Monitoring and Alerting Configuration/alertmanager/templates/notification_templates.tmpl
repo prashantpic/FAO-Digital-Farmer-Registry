@@ -1,0 +1,66 @@
+{{ define "dfr.email.subject" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} for {{ .CommonLabels.service }} {{ if .CommonLabels.country }}({{ .CommonLabels.country }}){{ end }}
+{{ end }}
+
+{{ define "dfr.email.html_body" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>DFR Alert</title>
+</head>
+<body>
+    <h2>DFR Monitoring Alert</h2>
+    <p><strong>Status:</strong> {{ .Status | toUpper }}</p>
+    {{ range .Alerts }}
+    <hr>
+    <p><strong>Alert:</strong> {{ .Labels.alertname }} ({{ .Labels.severity | toUpper }})</p>
+    <p><strong>Service:</strong> {{ .Labels.service }}</p>
+    {{ if .Labels.country }}<p><strong>Country:</strong> {{ .Labels.country }}</p>{{ end }}
+    {{ if .Labels.instance }}<p><strong>Instance:</strong> {{ .Labels.instance }}</p>{{ end }}
+    <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+    <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+    <p><strong>Starts At:</strong> {{ .StartsAt | humanTime }}</p>
+    {{ if eq .Status "resolved" }}<p><strong>Ends At:</strong> {{ .EndsAt | humanTime }}</p>{{ end }}
+    <p><a href="{{ .GeneratorURL }}">Prometheus Alert Link</a></p>
+    {{ end }}
+</body>
+</html>
+{{ end }}
+
+{{ define "dfr.email.html_body_critical" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CRITICAL DFR Alert</title>
+    <style> body { background-color: #ffdddd; } </style>
+</head>
+<body>
+    <h1 style="color: red;">CRITICAL DFR Monitoring Alert</h1>
+    <p><strong>Status:</strong> {{ .Status | toUpper }}</p>
+    {{ range .Alerts }}
+    <hr>
+    <p><strong>Alert:</strong> {{ .Labels.alertname }} (<strong>{{ .Labels.severity | toUpper }}</strong>)</p>
+    <p><strong>Service:</strong> {{ .Labels.service }}</p>
+    {{ if .Labels.country }}<p><strong>Country:</strong> {{ .Labels.country }}</p>{{ end }}
+    {{ if .Labels.instance }}<p><strong>Instance:</strong> {{ .Labels.instance }}</p>{{ end }}
+    <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+    <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+    <p><strong>Starts At:</strong> {{ .StartsAt | humanTime }}</p>
+    <p><a href="{{ .GeneratorURL }}">Prometheus Alert Link</a></p>
+    {{ end }}
+</body>
+</html>
+{{ end }}
+
+{{ define "dfr.slack.message" }}
+{{ range .Alerts }}
+*[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .Labels.alertname }}* for `{{ .Labels.service }}`{{ if .Labels.country }} (`{{ .Labels.country }}`){{ end }}
+Severity: `{{ .Labels.severity }}`
+{{ if .Labels.instance }}Instance: `{{ .Labels.instance }}`{{ end }}
+Summary: {{ .Annotations.summary }}
+Description: {{ .Annotations.description }}
+<{{ .GeneratorURL }}|View in Prometheus>
+{{ end }}
+{{ end }}

@@ -1,0 +1,18 @@
+# English translations for DFR custom modules.
+# Copyright (C) YEAR FAO & SSS-AI
+# This file is distributed under the same license as the DFR Localization Pack package.
+# Translator Name <translator@example.com>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: DFR Localization Pack 18.0.1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: YYYY-MM-DD HH:MM+ZONE\n"
+"PO-Revision-Date: YYYY-MM-DD HH:MM+ZONE\n"
+"Last-Translator: Translator Name <translator@example.com>\n"
+"Language-Team: English <contact@project.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"

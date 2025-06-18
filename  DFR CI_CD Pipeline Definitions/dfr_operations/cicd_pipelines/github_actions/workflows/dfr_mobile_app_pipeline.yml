@@ -1,0 +1,361 @@
+name: DFR Mobile App CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  # General
+  FLUTTER_VERSION: '3.x.x' # Specify your Flutter version if using Flutter
+  JAVA_VERSION: '17' # Specify Java version for Android builds
+  ANDROID_SDK_VERSION: '34' # Specify Android SDK version
+  # Feature Toggles
+  ENABLE_SAST_SCANS_PER_COMMIT: ${{ vars.ENABLE_SAST_SCANS_PER_COMMIT_MOBILE || 'true' }}
+  ENABLE_SECURITY_SCAN_MOBILE_ARTIFACT: ${{ vars.ENABLE_SECURITY_SCAN_MOBILE_ARTIFACT || 'true' }}
+
+jobs:
+  lint_and_static_analysis_mobile:
+    name: Lint & Static Analysis (Mobile)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Uncomment and configure if using Flutter
+      # - name: Set up Flutter
+      #   uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: ${{ env.FLUTTER_VERSION }}
+      #     channel: 'stable'
+      #     cache: true
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        # with:
+        #   api-level: ${{ env.ANDROID_SDK_VERSION }}
+        #   # Add other SDK components if needed, e.g., build-tools, ndk
+
+      - name: Run Android Linters (ktlint, Android Lint)
+        working-directory: ./android # Assuming native Android app in 'android' subfolder
+        run: |
+          # ./gradlew ktlintCheck
+          ./gradlew lintDebug
+          # Add commands for other linters (e.g., flutter analyze if using Flutter)
+          # if [ -f "../pubspec.yaml" ]; then
+          #   cd ..
+          #   flutter analyze
+          # fi
+
+      # Optional: SonarQube/SonarCloud Scan for Mobile
+      - name: SAST Scan Sonar (Mobile)
+        if: env.ENABLE_SAST_SCANS_PER_COMMIT == 'true' && (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_MOBILE }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL_MOBILE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This assumes SonarScanner is configured for your mobile project (e.g., via Gradle plugin or sonar-project.properties)
+          # Example for Gradle:
+          # ./gradlew sonarqube \
+          #   -Dsonar.projectKey=dfr_mobile_app \
+          #   -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
+          #   -Dsonar.login=${{ env.SONAR_TOKEN }} \
+          #   -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} \
+          #   -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }} \
+          #   -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          echo "SonarQube/SonarCloud for mobile: Configuration needed in project build files."
+
+
+  unit_tests_mobile:
+    name: Unit Tests (Mobile)
+    runs-on: ubuntu-latest
+    needs: lint_and_static_analysis_mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # - name: Set up Flutter (if applicable)
+      #   uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: ${{ env.FLUTTER_VERSION }}
+      #     channel: 'stable'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Run Unit Tests
+        working-directory: ./android # Or root for Flutter
+        run: |
+          # For native Android:
+          ./gradlew testDebugUnitTest
+          # For Flutter:
+          # flutter test
+          echo "Unit tests executed."
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-unit-test-results
+          path: |
+            android/app/build/reports/tests/testDebugUnitTest/ # Adjust path for native Android
+            # build/flutter_test_results/ # Adjust path for Flutter
+
+
+  integration_widget_tests_mobile:
+    name: Integration/Widget Tests (Mobile)
+    runs-on: ubuntu-latest # or macos-latest for iOS Flutter tests
+    needs: unit_tests_mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # - name: Set up Flutter (if applicable)
+      #   uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: ${{ env.FLUTTER_VERSION }}
+      #     channel: 'stable'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Run Integration/Widget Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29 # Example API level for emulator
+          script: |
+            echo "Starting Integration/Widget Tests..."
+            # For native Android (Espresso):
+            cd android && ./gradlew connectedDebugAndroidTest
+            # For Flutter (integration_test):
+            # flutter test integration_test
+
+      - name: Upload Integration Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-integration-test-results
+          path: |
+            android/app/build/reports/androidTests/connected/ # Adjust path for native Android
+            # build/integration_test_results/ # Adjust path for Flutter
+
+  build_mobile_app:
+    name: Build Mobile App (APK/AAB)
+    runs-on: ubuntu-latest
+    needs: [integration_widget_tests_mobile]
+    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/v'))
+    outputs:
+      apk_path: ${{ steps.build_app.outputs.apk_path }}
+      aab_path: ${{ steps.build_app.outputs.aab_path }}
+      version_name: ${{ steps.versioning.outputs.VERSION_NAME }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # - name: Set up Flutter (if applicable)
+      #   uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: ${{ env.FLUTTER_VERSION }}
+      #     channel: 'stable'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
+      - name: Decode and Setup Signing Keystore
+        id: setup_keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }} # Store keystore as base64 secret
+        run: |
+          echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > ./android/app/upload-keystore.jks
+          echo "Keystore setup complete."
+          # Set environment variables for Gradle to pick up
+          echo "UPLOAD_STORE_FILE=upload-keystore.jks" >> $GITHUB_ENV
+          echo "UPLOAD_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "UPLOAD_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "UPLOAD_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Determine Version Name and Code
+        id: versioning
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION_NAME="${{ github.ref_name }}" # e.g., v1.0.0
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            VERSION_NAME="main-${{ github.sha }}"
+          else
+            VERSION_NAME="${{ github.ref_name }}-${{ github.sha }}"
+          fi
+          # Version code could be based on build number or a counter
+          VERSION_CODE="${{ github.run_number }}" 
+          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+          echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
+          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "App Version Name: $VERSION_NAME, Version Code: $VERSION_CODE"
+          
+      - name: Build Release APK and AAB
+        id: build_app
+        working-directory: ./android # Or root for Flutter
+        env:
+          APP_VERSION_NAME: ${{ steps.versioning.outputs.VERSION_NAME }}
+          APP_VERSION_CODE: ${{ env.VERSION_CODE }}
+        run: |
+          echo "Building with Version Name: $APP_VERSION_NAME, Version Code: $APP_VERSION_CODE"
+          # For native Android:
+          # Pass version info to Gradle, e.g., via -PprojectProperty
+          ./gradlew assembleRelease -PappVersionName="$APP_VERSION_NAME" -PappVersionCode="$APP_VERSION_CODE"
+          ./gradlew bundleRelease -PappVersionName="$APP_VERSION_NAME" -PappVersionCode="$APP_VERSION_CODE"
+          
+          # For Flutter:
+          # flutter build apk --release --build-name="$APP_VERSION_NAME" --build-number="$APP_VERSION_CODE" --split-per-abi
+          # flutter build appbundle --release --build-name="$APP_VERSION_NAME" --build-number="$APP_VERSION_CODE"
+
+          APK_PATH_REL=$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)
+          AAB_PATH_REL=$(find app/build/outputs/bundle/release -name '*.aab' | head -n 1)
+          
+          echo "apk_path=${APK_PATH_REL}" >> $GITHUB_OUTPUT
+          echo "aab_path=${AAB_PATH_REL}" >> $GITHUB_OUTPUT
+          echo "APK generated at: $APK_PATH_REL"
+          echo "AAB generated at: $AAB_PATH_REL"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dfr-mobile-app-apk-${{ steps.versioning.outputs.VERSION_NAME }}
+          path: ./android/${{ steps.build_app.outputs.apk_path }}
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dfr-mobile-app-aab-${{ steps.versioning.outputs.VERSION_NAME }}
+          path: ./android/${{ steps.build_app.outputs.aab_path }}
+
+  security_scan_mobile_artifact:
+    name: Security Scan Mobile Artifact (MobSF)
+    runs-on: ubuntu-latest
+    needs: build_mobile_app
+    if: success() && env.ENABLE_SECURITY_SCAN_MOBILE_ARTIFACT == 'true'
+    steps:
+      - name: Download AAB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dfr-mobile-app-aab-${{ needs.build_mobile_app.outputs.version_name }}
+          path: ./artifact_to_scan
+
+      - name: Run MobSF Scan (Conceptual)
+        env:
+          MOBSF_API_KEY: ${{ secrets.MOBSF_API_KEY }}
+          MOBSF_SERVER_URL: ${{ secrets.MOBSF_SERVER_URL }}
+        run: |
+          ARTIFACT_FILE=$(find ./artifact_to_scan -name '*.aab')
+          echo "Conceptual: Uploading $ARTIFACT_FILE to MobSF server at $MOBSF_SERVER_URL for analysis."
+          # Actual MobSF CLI or API call would go here
+          # Example: mobsfscan $ARTIFACT_FILE --json -o mobsf_report.json
+          # Or using curl to upload to a running MobSF instance:
+          # curl -F 'file=@$ARTIFACT_FILE' $MOBSF_SERVER_URL/api/v1/upload -H "Authorization:$MOBSF_API_KEY"
+          # ... then poll for report ...
+          echo "{ \"placeholder_report\": \"MobSF scan completed for $ARTIFACT_FILE\" }" > mobsf_report.json
+
+      - name: Upload MobSF Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobsf-scan-report-${{ needs.build_mobile_app.outputs.version_name }}
+          path: mobsf_report.json
+
+  deploy_to_test_track_google_play:
+    name: Deploy to Test Track (Google Play)
+    runs-on: ubuntu-latest
+    needs: [build_mobile_app, security_scan_mobile_artifact] # security_scan_mobile_artifact can be a gate
+    environment:
+      name: mobile_staging
+      # url: # URL to the test track if available
+    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    steps:
+      - name: Download AAB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dfr-mobile-app-aab-${{ needs.build_mobile_app.outputs.version_name }}
+          path: ./google_play_artifact
+
+      - name: Upload AAB to Google Play (Test Track)
+        uses: r0adkll/upload-google-play@v1.1.0 # Or use fastlane
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.example.dfr # Your app's package name
+          releaseFiles: ./google_play_artifact/*.aab
+          track: internal # Or alpha, beta
+          status: completed # Or draft, inProgress
+          whatsNewDirectory: whatsnew/ # Path to release notes
+          # userFraction: 0.5 # For staged rollouts (0.0 to 1.0)
+          
+  deploy_to_production_store_google_play:
+    name: Deploy to Production Store (Google Play)
+    runs-on: ubuntu-latest
+    needs: deploy_to_test_track_google_play
+    environment:
+      name: mobile_production
+      # url: # URL to the production store listing
+    if: success() && startsWith(github.ref, 'refs/tags/v') # Deploy to production only on version tags
+    steps:
+      - name: Download AAB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dfr-mobile-app-aab-${{ needs.build_mobile_app.outputs.version_name }} # Tag name is version
+          path: ./google_play_artifact
+
+      # Option 1: Promote from test track (if supported by action/tool)
+      # Option 2: Upload directly to production track
+      - name: Upload AAB to Google Play (Production Track)
+        uses: r0adkll/upload-google-play@v1.1.0
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.example.dfr
+          releaseFiles: ./google_play_artifact/*.aab
+          track: production
+          status: completed
+          whatsNewDirectory: whatsnew/
+          # userFraction: 1.0 # Full rollout for production
+
+      - name: Tag Git Release (if needed, though tag should trigger this job)
+        if: false # Typically the tag itself triggers this, so redundant. Kept for conceptual completeness from SDS.
+        env:
+          VERSION: ${{ github.ref_name }}
+          TAG_MESSAGE: "Mobile App Production Release ${{ github.ref_name }}"
+        run: |
+          # Ensure git user is configured if not already
+          # git config --global user.name "GitHub Actions"
+          # git config --global user.email "actions@github.com"
+          # ./scripts/common/tag_git_release.sh
+          echo "Tagging is assumed to be the trigger for this job."

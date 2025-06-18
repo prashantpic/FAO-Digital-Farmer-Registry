@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- DFR Farmer Views -->
+
+    <!-- Tree View -->
+    <record id="dfr_farmer_tree" model="ir.ui.view">
+        <field name="name">dfr.farmer.tree</field>
+        <field name="model">dfr.farmer</field>
+        <field name="arch" type="xml">
+            <tree string="Farmers">
+                <field name="uid"/>
+                <field name="name"/>
+                <field name="national_id_number"/>
+                <field name="administrative_area_id"/>
+                <field name="kyc_status"/>
+                <field name="status"/>
+                <field name="write_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="dfr_farmer_form" model="ir.ui.view">
+        <field name="name">dfr.farmer.form</field>
+        <field name="model">dfr.farmer</field>
+        <field name="arch" type="xml">
+            <form string="Farmer">
+                <header>
+                    <button name="action_request_kyc_review" type="object" string="Request KYC Review"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('kyc_status', 'in', ('pending_review', 'verified'))]}"/>
+                     <!-- Button to launch KYC Wizard -->
+                     <button name="%(dfr_farmer_registry.action_dfr_farmer_kyc_wizard)d" type="action" string="Process KYC Review"
+                             class="oe_highlight"
+                             attrs="{'invisible': [('kyc_status', '!=', 'pending_review')]}"/>
+                    <button name="action_set_status_active" type="object" string="Set Active"
+                            attrs="{'invisible': ['|', ('status', 'in', ('active', 'deceased', 'archived', 'merged_duplicate')), ('kyc_status', '!=', 'verified')]}"
+                            help="Farmer must be KYC Verified to be set Active."/>
+                    <button name="action_set_status_inactive" type="object" string="Set Inactive"
+                            attrs="{'invisible': [('status', 'in', ('inactive', 'deceased', 'archived', 'merged_duplicate'))]}"/>
+                     <button name="action_set_status_deceased" type="object" string="Set Deceased"
+                            attrs="{'invisible': [('status', 'in', ('deceased', 'archived', 'merged_duplicate'))]}"/>
+                    <field name="status" widget="statusbar" statusbar_visible="pending_verification,active,inactive,deceased,potential_duplicate,archived" options="{'clickable': '1'}"/>
+                    <field name="kyc_status" widget="statusbar" statusbar_visible="not_started,pending_review,verified,rejected" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                         <button name="action_open_deduplication_review" type="object" class="oe_stat_button" icon="fa-users"
+                                 attrs="{'invisible': [('deduplication_potential_duplicate_ids', '=', [])]}"
+                                 help="Review potential duplicates for this farmer.">
+                             <div class="o_field_widget o_stat_info">
+                                 <span class="o_stat_text text-danger">Potential</span>
+                                 <span class="o_stat_text text-danger">Duplicates</span>
+                             </div>
+                         </button>
+                    </div>
+                    <div class="oe_title">
+                         <h1><field name="name" placeholder="Farmer Full Name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Personal Information">
+                            <field name="uid" readonly="1"/>
+                            <field name="date_of_birth"/>
+                            <field name="sex"/>
+                            <field name="role_in_household"/>
+                            <field name="education_level_id"/>
+                            <field name="contact_phone"/>
+                            <field name="contact_email"/>
+                        </group>
+                        <group string="Location &amp; Address">
+                             <field name="administrative_area_id" options="{'no_create': True, 'no_open': True}"/>
+                             <label for="gps_latitude_homestead" string="Homestead GPS"/>
+                             <div>
+                                 <field name="gps_latitude_homestead" class="oe_inline" placeholder="Latitude"/> -
+                                 <field name="gps_longitude_homestead" class="oe_inline" placeholder="Longitude"/>
+                             </div>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="National ID &amp; KYC" name="national_id_kyc">
+                            <group>
+                                <group>
+                                    <field name="national_id_type_id" options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="national_id_number"/>
+                                </group>
+                                <group string="KYC Verification Details">
+                                    <field name="kyc_status" readonly="1"/>
+                                    <field name="kyc_verification_date" readonly="1"/>
+                                    <field name="kyc_reviewer_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="kyc_review_notes"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Consent" name="consent">
+                            <group>
+                                <group>
+                                    <field name="consent_status"/>
+                                    <field name="consent_date" readonly="1"/>
+                                    <field name="consent_version_agreed"/>
+                                    <field name="consent_purpose_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                </group>
+                                <group attrs="{'invisible': [('consent_status', '!=', 'withdrawn')]}">
+                                    <field name="consent_withdrawal_date" readonly="1"/>
+                                    <field name="consent_withdrawal_reason"/>
+                                </group>
+                            </group>
+                             <button name="action_record_consent" type="object" string="Record Consent Given"
+                                     attrs="{'invisible': [('consent_status', '=', 'given')]}"
+                                     confirm="Are you sure you want to record that consent has been given for the specified purposes and version? This action will be logged."
+                                     context="{'default_consent_version_agreed': 'Policy v1.0', 'default_consent_purpose_ids': [(6,0, [])]}"
+                                     help="Click to record that the farmer has given consent. Ensure purposes and version are correctly set before confirming."/>
+                             <button name="action_withdraw_consent" type="object" string="Record Consent Withdrawal"
+                                     attrs="{'invisible': [('consent_status', '!=', 'given')]}"
+                                     confirm="Are you sure you want to record that consent has been withdrawn? Please provide a reason. This action will be logged."
+                                     context="{'default_consent_withdrawal_reason': ''}"
+                                     help="Click to record that the farmer has withdrawn their consent. A reason should be documented."/>
+                        </page>
+                         <page string="Households" name="households">
+                             <field name="household_member_ids" context="{'default_farmer_id': active_id}">
+                                  <tree editable="bottom">
+                                       <field name="household_id" options="{'no_create': True}"/>
+                                       <field name="name" string="Member Name (if not registered Farmer)"/>
+                                       <field name="relationship_to_head_id" options="{'no_create': True}"/>
+                                       <field name="role_in_household"/>
+                                       <field name="is_farmer_record_linked" readonly="1"/>
+                                  </tree>
+                             </field>
+                         </page>
+                        <page string="Farms" name="farms">
+                            <field name="farm_ids" context="{'default_farmer_id': active_id}">
+                                 <tree editable="bottom">
+                                      <field name="name"/>
+                                      <field name="household_id" options="{'no_create': True}"/>
+                                      <field name="total_area" readonly="1"/>
+                                      <field name="administrative_area_id" options="{'no_create': True}"/>
+                                 </tree>
+                            </field>
+                        </page>
+                         <page string="De-duplication" name="deduplication">
+                             <group>
+                                 <field name="status" attrs="{'invisible': [('status', '!=', 'potential_duplicate')]}" readonly="1"/>
+                                 <field name="deduplication_potential_duplicate_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}"/>
+                                 <field name="deduplication_master_farmer_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                             </group>
+                             <button name="action_open_deduplication_review" type="object" string="Review Potential Duplicates"
+                                     attrs="{'invisible': [('deduplication_potential_duplicate_ids', '=', [])]}"/>
+                             <button name="_onchange_check_potential_duplicates" type="object" string="Manually Run Duplicate Check"
+                                     help="Manually triggers the duplicate check based on current field values. Results appear as a warning if duplicates are found."/>
+                         </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="dfr_farmer_search" model="ir.ui.view">
+        <field name="name">dfr.farmer.search</field>
+        <field name="model">dfr.farmer</field>
+        <field name="arch" type="xml">
+            <search string="Search Farmer">
+                <field name="name" string="Farmer Name/UID" filter_domain="['|', ('name', 'ilike', self), ('uid', 'ilike', self)]"/>
+                <field name="national_id_number"/>
+                <field name="contact_phone"/>
+                <field name="administrative_area_id"/>
+                <field name="status"/>
+                <field name="kyc_status"/>
+                <filter string="Potential Duplicates" name="filter_potential_duplicates" domain="[('status', '=', 'potential_duplicate')]"/>
+                <filter string="Active" name="filter_active" domain="[('status', '=', 'active')]"/>
+                <filter string="Pending Verification" name="filter_pending_verification" domain="[('status', '=', 'pending_verification')]"/>
+                <filter string="Deceased" name="filter_deceased" domain="[('status', '=', 'deceased')]}"/>
+                <filter string="Archived" name="filter_archived" domain="[('status', '=', 'archived')]}"/>
+                <filter string="Merged Duplicates" name="filter_merged_duplicates" domain="[('status', '=', 'merged_duplicate')]}"/>
+                <separator/>
+                <filter string="KYC Not Started" name="filter_kyc_not_started" domain="[('kyc_status', '=', 'not_started')]"/>
+                 <filter string="KYC Pending Review" name="filter_kyc_pending_review" domain="[('kyc_status', '=', 'pending_review')]"/>
+                 <filter string="KYC Verified" name="filter_kyc_verified" domain="[('kyc_status', '=', 'verified')]"/>
+                 <filter string="KYC Rejected" name="filter_kyc_rejected" domain="[('kyc_status', '=', 'rejected')]"/>
+                <separator/>
+                 <filter string="Consent Given" name="filter_consent_given" domain="[('consent_status', '=', 'given')]}"/>
+                 <filter string="Consent Withdrawn" name="filter_consent_withdrawn" domain="[('consent_status', '=', 'withdrawn')]}"/>
+                <group expand="0" string="Group By">
+                     <filter string="Status" name="groupby_status" context="{'group_by': 'status'}"/>
+                     <filter string="KYC Status" name="groupby_kyc_status" context="{'group_by': 'kyc_status'}"/>
+                     <filter string="Administrative Area" name="groupby_administrative_area_id" context="{'group_by': 'administrative_area_id'}"/>
+                     <filter string="Consent Status" name="groupby_consent_status" context="{'group_by': 'consent_status'}"/>
+                     <filter string="Sex" name="groupby_sex" context="{'group_by': 'sex'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_dfr_farmer_list" model="ir.actions.act_window">
+        <field name="name">Farmers</field>
+        <field name="res_model">dfr.farmer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="dfr_farmer_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new farmer record.
+            </p><p>
+                Manage foundational data for individual farmers, including personal details, national ID, KYC status, consent, and links to households and farms.
+            </p>
+        </field>
+    </record>
+
+</odoo>

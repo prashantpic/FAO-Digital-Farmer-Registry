@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+  - name: DFR-Prometheus
+    type: prometheus
+    url: http://prometheus:9090 # URL to Prometheus server, adjust if different
+    access: server # Grafana backend makes requests
+    isDefault: true
+    jsonData:
+      timeInterval: "15s" # Default scrape interval for dashboards
+    editable: true # Allow admins to edit in Grafana UI if needed

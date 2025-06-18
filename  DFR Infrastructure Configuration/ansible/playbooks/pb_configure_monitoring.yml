@@ -1,0 +1,50 @@
+---
+# Ansible playbook to configure system monitoring agents on DFR servers.
+# This playbook applies the 'monitoring_config' role to relevant hosts.
+
+# Usage:
+# ansible-playbook -i inventories/your_inventory.ini playbooks/pb_configure_monitoring.yml --extra-vars "monitoring_server_ip_global=192.168.1.100"
+# Variables like 'monitoring_server_ip_global' can also be defined in group_vars/all.yml or inventory.
+
+- name: Install and Configure Monitoring Agents
+  hosts: all # Targets all servers in the DFR stack for monitoring agent installation
+  become: true
+  roles:
+    - role: monitoring_config
+      tags: ['monitoring', 'agents']
+  vars_files:
+    - "{{ inventory_dir }}/../group_vars/all.yml" # For global monitoring settings
+    - "{{ inventory_dir }}/../group_vars/{{ group_names[0] }}.yml" # For group-specific monitoring overrides
+    - "{{ inventory_dir }}/../host_vars/{{ inventory_hostname }}.yml" # For host-specific monitoring overrides
+    # - "{{ inventory_dir }}/../vault.yml" # If any sensitive configs for monitoring agents
+  vars:
+    # Default monitoring server IP; can be overridden by inventory or extra-vars
+    monitoring_server_ip: "{{ monitoring_server_ip_global | default('x.x.x.x') }}" # Placeholder IP
+
+    # Agent-specific configurations (examples, actual vars depend on the monitoring_config role implementation)
+    # For Prometheus node_exporter:
+    node_exporter_enabled: true
+    node_exporter_port: 9100 # Default port
+
+    # For Telegraf:
+    telegraf_enabled: false # Example: not enabled by default
+    telegraf_agent_config:
+      interval: "10s"
+      round_interval: true
+    telegraf_outputs_influxdb:
+      - urls: ["http://{{ monitoring_server_ip }}:8086"] # Example InfluxDB output
+        database: "telegraf"
+        # username: "{{ vault_telegraf_influx_user }}"
+        # password: "{{ vault_telegraf_influx_password }}"
+
+    # For Zabbix agent:
+    zabbix_agent_enabled: false # Example: not enabled by default
+    zabbix_server_host: "{{ monitoring_server_ip }}"
+    zabbix_server_active: "{{ monitoring_server_ip }}" # For active checks
+    zabbix_agent_hostname: "{{ inventory_hostname }}"
+
+    # Add other agent-specific configurations as needed by the 'monitoring_config' role.
+    # The role 'monitoring_config' should be designed to handle different types of agents
+    # based on these variables or its internal logic.
+    custom_metrics_paths: # Example for node_exporter textfile collector
+      - "/var/lib/node_exporter/textfile_collector"

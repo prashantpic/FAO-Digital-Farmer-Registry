@@ -1,0 +1,100 @@
+sequenceDiagram
+    actor "FAO Central Team" as FAOCentralTeam
+    participant "Git Repository" as GitRepository
+    actor "National IT Team" as NationalITTeam
+    participant "CI/CD Pipeline" as dfrOpsCiCdPipeline022
+    participant "Country Staging Environment" as CountryStagingEnvironment
+    participant "Country Production Environment" as CountryProductionEnvironment
+
+    loop 1. Internal Development & Testing
+        FAOCentralTeam-FAOCentralTeam: 1. Develops & internally tests new core codebase version vX.Y.Z
+        FAOCentralTeam--FAOCentralTeam: Internal Test Passed
+    end
+
+    activate FAOCentralTeam
+    FAOCentralTeam-GitRepository: 2. Push & Tag Release vX.Y.Z (Ref: REQ-PCA-008)
+    activate GitRepository
+    GitRepository--FAOCentralTeam: Tag Created Successfully
+    deactivate GitRepository
+
+    FAOCentralTeam-FAOCentralTeam: 3. Prepare Release Notes & Change Proposal (Ref: A.2.2)
+    FAOCentralTeam--FAOCentralTeam: Documentation Ready
+
+    FAOCentralTeam-NationalITTeam: 4. Notify: New Core Version vX.Y.Z Available (incl. Docs)
+    deactivate FAOCentralTeam
+    activate NationalITTeam
+
+    NationalITTeam-NationalITTeam: 5. Review Release Documentation and Impact Assessment
+    NationalITTeam--NationalITTeam: Review Complete
+
+    NationalITTeam-FAOCentralTeam: 6. Approve Update for Staging Deployment (vX.Y.Z)
+    activate FAOCentralTeam
+    note over FAOCentralTeam,NationalITTeam: Approval process (Step 6) might involve back-and-forth communication if issues are found. This diagram shows the happy path.
+    FAOCentralTeam--NationalITTeam: Approval Acknowledged
+    deactivate FAOCentralTeam
+
+    NationalITTeam-dfrOpsCiCdPipeline022: 7. Trigger Staging Deployment for vX.Y.Z (Ref: REQ-DIO-011)
+    activate dfrOpsCiCdPipeline022
+
+    dfrOpsCiCdPipeline022-GitRepository: 7.1. Fetch Code for Tag vX.Y.Z
+    activate GitRepository
+    GitRepository--dfrOpsCiCdPipeline022: Code Fetched
+    deactivate GitRepository
+
+    loop 7.2. Build & Automated Tests
+        dfrOpsCiCdPipeline022-dfrOpsCiCdPipeline022: 7.2. Execute Build & Automated Tests (Ref: REQ-PCA-013)
+        dfrOpsCiCdPipeline022--dfrOpsCiCdPipeline022: Build & Tests Successful
+    end
+
+    dfrOpsCiCdPipeline022-CountryStagingEnvironment: 7.3. Deploy Artifacts/Code to Staging (Ref: REQ-DIO-006)
+    activate CountryStagingEnvironment
+    CountryStagingEnvironment--dfrOpsCiCdPipeline022: Staging Deployment Succeeded
+    deactivate CountryStagingEnvironment
+
+    dfrOpsCiCdPipeline022-NationalITTeam: 8. Notify: Staging Deployment for vX.Y.Z Succeeded
+    deactivate dfrOpsCiCdPipeline022
+
+    loop 9. UAT on Staging
+        NationalITTeam-CountryStagingEnvironment: 9. Perform User Acceptance Testing (UAT) (Ref: REQ-CM-002)
+        activate CountryStagingEnvironment
+        CountryStagingEnvironment--NationalITTeam: UAT Results Gathered
+        deactivate CountryStagingEnvironment
+    end
+
+    alt 10. Evaluate UAT & Plan
+        NationalITTeam-NationalITTeam: 10. Evaluate UAT Results & Plan Production Window
+        NationalITTeam--NationalITTeam: Decision: UAT Signed Off & Prod Window Planned
+    end
+    note over NationalITTeam: UAT (Step 9 & 10) is an iterative process. If issues are found, they are reported to FAOCentralTeam, fixed, and a new build might be deployed to Staging for re-testing.
+
+    NationalITTeam-FAOCentralTeam: 11. Communicate UAT Sign-off for vX.Y.Z
+    activate FAOCentralTeam
+    FAOCentralTeam--NationalITTeam: Sign-off Acknowledged
+    deactivate FAOCentralTeam
+
+    NationalITTeam-dfrOpsCiCdPipeline022: 12. Trigger Production Deployment for vX.Y.Z (During Planned Window)
+    activate dfrOpsCiCdPipeline022
+    note over NationalITTeam,dfrOpsCiCdPipeline022: Production deployment (Step 12) occurs during a planned maintenance window to minimize disruption.
+
+    dfrOpsCiCdPipeline022-GitRepository: 12.1. Fetch Approved Artifact/Code for vX.Y.Z
+    activate GitRepository
+    GitRepository--dfrOpsCiCdPipeline022: Artifact/Code Fetched
+    deactivate GitRepository
+
+    dfrOpsCiCdPipeline022-CountryProductionEnvironment: 12.2. Deploy Artifacts/Code to Production (Ref: REQ-DIO-006)
+    activate CountryProductionEnvironment
+    CountryProductionEnvironment--dfrOpsCiCdPipeline022: Production Deployment Succeeded
+    deactivate CountryProductionEnvironment
+
+    dfrOpsCiCdPipeline022-NationalITTeam: 13. Notify: Production Deployment for vX.Y.Z Succeeded
+    dfrOpsCiCdPipeline022-FAOCentralTeam: 14. Notify: Production Deployment for vX.Y.Z Succeeded
+    deactivate dfrOpsCiCdPipeline022
+    activate FAOCentralTeam
+
+    NationalITTeam-CountryProductionEnvironment: 15. Initiate Post-Deployment Monitoring (Hypercare, Ref: D.2.1)
+    activate CountryProductionEnvironment
+    CountryProductionEnvironment--NationalITTeam: Monitoring Active
+    deactivate CountryProductionEnvironment
+
+    deactivate NationalITTeam
+    deactivate FAOCentralTeam

@@ -1,0 +1,68 @@
+sequenceDiagram
+    actor "Scheduler (Cron)" as scheduler
+    participant "Backup System/Scripts" as dfr-ops-backup-restore-023
+    participant "PostgreSQL DB Container" as dfr-infra-postgres-db-container-020
+    participant "Odoo App Container" as dfr-infra-odoo-app-container-019
+    participant "Backup Storage" as generic-backup-storage
+
+    note left of scheduler: Scheduler (e.g., cron) triggers the backup script daily.
+
+    loop Daily: Trigger Backup Job
+        scheduler-dfr-ops-backup-restore-023: 1. Trigger Backup Job
+        activate dfr-ops-backup-restore-023
+
+        dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.1. Initialize Backup Process
+
+        dfr-ops-backup-restore-023-dfr-infra-postgres-db-container-020: 1.2. Execute Database Dump (e.g., pg_dump)
+        activate dfr-infra-postgres-db-container-020
+        dfr-infra-postgres-db-container-020--dfr-ops-backup-restore-023: Database Dump Data/Status
+        deactivate dfr-infra-postgres-db-container-020
+
+        note over dfr-ops-backup-restore-023: Each main step (DB dump, Odoo files archive, compression, upload) logs its own success or failure status internally. This diagram highlights key logging points.
+
+        alt DB Dump Operation Result
+            dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.3.1. [DB Dump Successful] Process & Store DB Dump (temporarily)
+        else DB Dump Failed
+            dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.3.2. [DB Dump Failed] Log DB Dump Failure
+        end
+
+        dfr-ops-backup-restore-023-dfr-infra-odoo-app-container-019: 1.4. Archive Odoo Application Files (custom modules, filestore)
+        activate dfr-infra-odoo-app-container-019
+        dfr-infra-odoo-app-container-019--dfr-ops-backup-restore-023: Odoo Files Archive Data/Status
+        deactivate dfr-infra-odoo-app-container-019
+
+        alt Odoo Files Archive Operation Result
+            dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.5.1. [Archive Successful] Process & Store Odoo Files Archive (temporarily)
+        else Archive Failed
+            dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.5.2. [Archive Failed] Log Odoo Files Archive Failure
+        end
+
+        opt Backup Files (DB and/or Odoo) are available
+            dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.6.1. Compress All Available Backup Files
+            dfr-ops-backup-restore-023--dfr-ops-backup-restore-023: Compression Status
+
+            alt Compression Operation Result
+                dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.6.2.1. [Compression Successful]
+
+                dfr-ops-backup-restore-023-generic-backup-storage: 1.6.2.1.1. Upload Compressed Backup File(s) to Storage
+                activate generic-backup-storage
+                generic-backup-storage--dfr-ops-backup-restore-023: Upload Acknowledgment/Status
+                deactivate generic-backup-storage
+
+                alt Upload Operation Result
+                    dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.6.2.1.2.1. [Upload Successful] Log Upload Success
+                else Upload Failed
+                    dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.6.2.1.2.2. [Upload Failed] Log Upload Failure
+                end
+
+            else Compression Failed
+                dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.6.2.2. [Compression Failed] Log Compression Failure
+            end
+        end
+
+        note right of dfr-ops-backup-restore-023: The overall job status reflects if all critical parts of the backup (DB, Odoo files, transfer to storage) succeeded. Failure of any critical part may lead to a 'Partial' or 'Failure' overall status.
+        note over dfr-infra-postgres-db-container-020, dfr-infra-odoo-app-container-019, generic-backup-storage: Activation of DB Container, Odoo App Container, and Backup Storage are for the duration of their respective direct interactions.
+
+        dfr-ops-backup-restore-023-dfr-ops-backup-restore-023: 1.7. Log Overall Backup Job Status (Success/Partial/Failure) & Clean Up Temporary Files
+        deactivate dfr-ops-backup-restore-023
+    end

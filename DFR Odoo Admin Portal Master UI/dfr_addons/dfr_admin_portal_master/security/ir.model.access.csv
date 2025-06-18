@@ -1,0 +1,2 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+# access_dfr_master_config_model,access.dfr.master.config.model,model_dfr_master_config_model,dfr_rbac_config.group_dfr_national_admin,1,1,1,0

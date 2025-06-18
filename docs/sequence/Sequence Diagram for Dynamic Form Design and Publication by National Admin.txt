@@ -1,0 +1,78 @@
+sequenceDiagram
+    actor "National Admin" as ACTORNA
+    participant "Odoo Admin Portal (Odoo Presentation Layer)" as PARTICIPANTOAP
+    participant "Dynamic Form Engine Module (Odoo)" as PARTICIPANTDFEM
+    participant "PostgreSQL Database" as PARTICIPANTPGSQL
+
+    activate ACTORNA
+    ACTORNA-PARTICIPANTOAP: 1. Accesses Form Builder Interface
+    activate PARTICIPANTOAP
+    PARTICIPANTOAP-PARTICIPANTDFEM: 2. fetchFormBuilderData(userId)
+    activate PARTICIPANTDFEM
+    PARTICIPANTDFEM-PARTICIPANTPGSQL: 2.1. queryExistingFormDefinitions()
+    activate PARTICIPANTPGSQL
+    PARTICIPANTPGSQL--PARTICIPANTDFEM: formDefinitionsList
+    deactivate PARTICIPANTPGSQL
+    PARTICIPANTDFEM-PARTICIPANTPGSQL: 2.2. querySupportedFieldTypes()
+    activate PARTICIPANTPGSQL
+    PARTICIPANTPGSQL--PARTICIPANTDFEM: fieldTypesList
+    deactivate PARTICIPANTPGSQL
+    PARTICIPANTDFEM--PARTICIPANTOAP: formBuilderUIDataResponse (e.g., existing forms, field types)
+    deactivate PARTICIPANTDFEM
+    PARTICIPANTOAP--ACTORNA: 3. Displays Form Builder UI
+    deactivate PARTICIPANTOAP
+    deactivate ACTORNA
+
+    activate ACTORNA
+    ACTORNA-PARTICIPANTOAP: 4. Defines Form (Name, Fields, Validations, Logic) through UI interactions
+    activate PARTICIPANTOAP
+    note over PARTICIPANTOAP: National Admin designs the form structure, including fields, types (text, number, date, GPS, image etc.), validation rules (required, regex, range), and conditional display logic for fields (REQ-3-001, REQ-3-002).
+    PARTICIPANTOAP--ACTORNA: 5. UI reflects form definition in progress
+    deactivate PARTICIPANTOAP
+    deactivate ACTORNA
+
+    activate ACTORNA
+    ACTORNA-PARTICIPANTOAP: 6. saveDraftForm(formDefinitionData)
+    activate PARTICIPANTOAP
+    PARTICIPANTOAP-PARTICIPANTDFEM: 7. processSaveOrUpdateForm(formDefinitionData, userId, status='Draft')
+    activate PARTICIPANTDFEM
+    loop 7.1. Validation
+        PARTICIPANTDFEM-PARTICIPANTDFEM: validateFormDefinition(formDefinitionData)
+    end
+    alt If validation OK
+        PARTICIPANTDFEM-PARTICIPANTDFEM: 7.2. determineNewVersionIfNeeded(formId, existingVersion)
+        note over PARTICIPANTDFEM: Dynamic Form Engine handles form versioning. Saving a previously published form may create a new version (REQ-3-003).
+        PARTICIPANTDFEM-PARTICIPANTPGSQL: 7.3. persistFormDefinition(validatedData, versionInfo, status='Draft')
+        activate PARTICIPANTPGSQL
+        PARTICIPANTPGSQL--PARTICIPANTDFEM: storageConfirmation
+        deactivate PARTICIPANTPGSQL
+    else Validation Fails
+    end
+    PARTICIPANTDFEM--PARTICIPANTOAP: saveDraftResponse(success, formId, version, errors)
+    deactivate PARTICIPANTDFEM
+    PARTICIPANTOAP--ACTORNA: 8. Displays Save Draft Status (Success/Failure with errors)
+    deactivate PARTICIPANTOAP
+    deactivate ACTORNA
+
+    activate ACTORNA
+    ACTORNA-PARTICIPANTOAP: 9. requestPublishForm(formId, version)
+    activate PARTICIPANTOAP
+    PARTICIPANTOAP-PARTICIPANTDFEM: 10. processPublishForm(formId, version, userId)
+    activate PARTICIPANTDFEM
+    loop 10.1. Final Validation For Publish
+        PARTICIPANTDFEM-PARTICIPANTDFEM: performFinalValidationForPublish(formId, version)
+    end
+    alt If validation OK
+        PARTICIPANTDFEM-PARTICIPANTPGSQL: 10.2. updateFormStatusInDB(formId, version, status='Published')
+        activate PARTICIPANTPGSQL
+        PARTICIPANTPGSQL--PARTICIPANTDFEM: updateConfirmation
+        deactivate PARTICIPANTPGSQL
+    else Validation Fails
+    end
+    PARTICIPANTDFEM--PARTICIPANTOAP: publishFormResponse(success, errors)
+    deactivate PARTICIPANTDFEM
+    PARTICIPANTOAP--ACTORNA: 11. Displays Publish Form Status (Success/Failure with errors)
+    deactivate PARTICIPANTOAP
+    deactivate ACTORNA
+
+    note over ACTORNA, PARTICIPANTPGSQL: Upon successful publication (REQ-3-004), the form definition (structure, version) becomes available to be retrieved by the mobile enumerator app via a separate API call (not shown in this admin-focused sequence).

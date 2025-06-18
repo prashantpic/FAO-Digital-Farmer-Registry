@@ -1,0 +1,45 @@
+sequenceDiagram
+    actor "Farmer (External)" as Farmer
+    participant "Admin Portal (UI)" as dfrModuleAdminSettings005
+    participant "Odoo App Server (Backend)" as dfrInfraOdooAppContainer019
+    participant "Farmer Registry Module" as dfrModuleFarmerRegistry002
+    participant "Audit Log Module" as dfrModuleSecurityAuditLog013
+
+    note over Farmer: Farmer submits a consent withdrawal request through an external administrative channel (e.g., email, letter). Administrator receives this request and performs offline identity verification before interacting with the DFR system.
+
+    dfrModuleAdminSettings005-dfrInfraOdooAppContainer019: 1. Admin (via UI) searches for farmer record after offline identity verification.
+    activate dfrInfraOdooAppContainer019
+    dfrInfraOdooAppContainer019-dfrModuleFarmerRegistry002: 1.1. Query Farmer Record(s) by identity details (e.g., UID, Name)
+    activate dfrModuleFarmerRegistry002
+    dfrModuleFarmerRegistry002--dfrInfraOdooAppContainer019: 1.1. Farmer Record(s) Summary/Details
+    deactivate dfrModuleFarmerRegistry002
+    dfrInfraOdooAppContainer019--dfrModuleAdminSettings005: 1. Display Farmer Search Results / Farmer Details Form
+    deactivate dfrInfraOdooAppContainer019
+
+    dfrModuleAdminSettings005-dfrInfraOdooAppContainer019: 2. Admin (via UI) submits request to update farmer's consent status to 'Withdrawn'. (Payload: farmerid, newstatus='Withdrawn', reason, consentdate)
+    activate dfrInfraOdooAppContainer019
+    dfrInfraOdooAppContainer019-dfrModuleFarmerRegistry002: 2.1. farmermodel.write({'consentStatus': 'Withdrawn', 'consentDate': currentdate, ...}) for farmerid
+    activate dfrModuleFarmerRegistry002
+    note right of dfrModuleFarmerRegistry002: REQ-FHR-018: Updates consent fields (status, date, version) in Farmer model in dfrfarmerregistry.
+    dfrModuleFarmerRegistry002--dfrInfraOdooAppContainer019: 2.1. Write Operation Success/Failure
+    deactivate dfrModuleFarmerRegistry002
+
+    alt If Farmer Record Update Successful
+        dfrInfraOdooAppContainer019-dfrModuleSecurityAuditLog013: 2.2.1. logevent(action='ConsentWithdrawn', farmerid, admin_user, details)
+        activate dfrModuleSecurityAuditLog013
+        note right of dfrModuleSecurityAuditLog013: REQ-SADG-005, REQ-SADG-009: Logs the consent change details including who made the change and when.
+        dfrModuleSecurityAuditLog013--dfrInfraOdooAppContainer019: 2.2.1. Audit Log Success/Failure
+        deactivate dfrModuleSecurityAuditLog013
+        
+        dfrInfraOdooAppContainer019-dfrInfraOdooAppContainer019: 2.2.2. (Internal) System Applies Data Processing Restrictions for Farmer
+        note over dfrInfraOdooAppContainer019: REQ-SADG-008: Systemic effect. Business rules (e.g., Odoo record rules, service layer checks in various modules) are now enforced to restrict or stop data processing for this farmer based on the 'Withdrawn' consent status. This might affect reporting, notifications, and data sharing.
+        
+        dfrInfraOdooAppContainer019-Farmer: 2.2.3. Send Confirmation of Consent Withdrawal
+        note over Farmer: System (e.g., via DFR Notification Engine, if configured) sends an automated confirmation to the farmer. Alternatively, Admin may send manual confirmation.
+    
+    else Else (If Farmer Record Update Failed)
+        dfrInfraOdooAppContainer019--dfrModuleAdminSettings005: 2.3.1. Send Error: Failed to update consent status.
+    end
+
+    dfrInfraOdooAppContainer019--dfrModuleAdminSettings005: 2. Confirmation of Update Success / Error Message to UI
+    deactivate dfrInfraOdooAppContainer019

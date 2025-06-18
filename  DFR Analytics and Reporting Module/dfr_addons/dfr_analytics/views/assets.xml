@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <template id="assets_backend_dfr_analytics" name="DFR Analytics Assets" inherit_id="web.assets_backend">
+            <xpath expr="." position="inside">
+                <!-- SCSS -->
+                <link rel="stylesheet" type="text/scss" href="/dfr_analytics/static/src/scss/analytics_styles.scss"/>
+                
+                <!-- Leaflet Library (assuming bundled in static/lib/leaflet/) -->
+                <link rel="stylesheet" type="text/css" href="/dfr_analytics/static/lib/leaflet/leaflet.css"/>
+                <script type="text/javascript" src="/dfr_analytics/static/lib/leaflet/leaflet.js"></script>
+                
+                <!-- Chart.js (assuming it's loaded globally by Odoo or another module,
+                     or add <script src="/path/to/chart.js/chart.umd.js"></script> if bundled locally)
+                     Odoo 16+ often bundles Chart.js. For Odoo 18, verify its availability.
+                     If not globally available, it might need to be added to assets here or imported in JS.
+                -->
+
+                <!-- OWL Component JS -->
+                <script type="text/javascript" src="/dfr_analytics/static/src/js/kpi_widget.js"></script>
+                <script type="text/javascript" src="/dfr_analytics/static/src/js/chart_widget.js"></script>
+                <script type="text/javascript" src="/dfr_analytics/static/src/js/map_view_component.js"></script>
+                <script type="text/javascript" src="/dfr_analytics/static/src/js/dashboard_manager.js"></script>
+                
+                <!-- OWL XML templates are typically included via the 'assets' dict in __manifest__.py -->
+                <!-- No need to list XML templates here if they are in 'web.assets_backend' in manifest -->
+            </xpath>
+        </template>
+    </data>
+</odoo>

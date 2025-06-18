@@ -1,0 +1,52 @@
+sequenceDiagram
+    actor "Translator" as Translator
+    participant "Git Repository" as GitRepository
+    participant "CI/CD Pipeline" as dfr-ops-ci-cd-pipeline-022
+    participant "Odoo Instance (Container)" as dfr-infra-odoo-app-container-019
+    participant "DFR Localization Pack Module" as dfr-module-localization-pack-012
+
+    note over Translator, dfr-module-localization-pack-012: Assumes .pot files (source terms) are already generated and available to translators as a precondition to this flow.
+
+    Translator-GitRepository: 1. Commit/Push updated .po files
+
+    GitRepository-dfr-ops-ci-cd-pipeline-022: 2. [Event] Code Committed (localization files updated)
+    activate dfr-ops-ci-cd-pipeline-022
+
+    dfr-ops-ci-cd-pipeline-022-GitRepository: 3. Fetch latest code (including .po files)
+    GitRepository--dfr-ops-ci-cd-pipeline-022: 3. Code snapshot
+
+    dfr-ops-ci-cd-pipeline-022-dfr-ops-ci-cd-pipeline-022: 4. Validate .po file syntax
+
+    alt 4.1. [If .po File Syntax Invalid]
+        dfr-ops-ci-cd-pipeline-022-dfr-ops-ci-cd-pipeline-022: 4.1.1. Log validation error
+        dfr-ops-ci-cd-pipeline-022-dfr-ops-ci-cd-pipeline-022: 4.1.2. Notify Admin: .po validation failed (Signal to external monitoring/alerting)
+    end
+
+    dfr-ops-ci-cd-pipeline-022-dfr-ops-ci-cd-pipeline-022: 5. Build localization package (e.g., prepare updated Odoo module files)
+
+    dfr-ops-ci-cd-pipeline-022-dfr-infra-odoo-app-container-019: 6. Deploy localization artifact (updated module files)
+    activate dfr-infra-odoo-app-container-019
+
+    note over dfr-infra-odoo-app-container-019: Odoo's core i18n system processes the .po files from the updated 'dfr-module-localization-pack-012' during the 'Apply module update' step. This makes new translations available in the UI.
+
+    dfr-infra-odoo-app-container-019-dfr-infra-odoo-app-container-019: 6.1. Apply module update (e.g., odoo-bin -u dfrmodulelocalization_pack)
+    
+    dfr-infra-odoo-app-container-019-dfr-module-localization-pack-012: 6.1.1. [Odoo Core] Load translations from your .po files
+    activate dfr-module-localization-pack-012
+    dfr-module-localization-pack-012--dfr-infra-odoo-app-container-019: 6.1.1. Translations parsed and ready
+
+    dfr-module-localization-pack-012-dfr-module-localization-pack-012: 6.1.2. Update in-memory translation cache (via Odoo Core)
+    deactivate dfr-module-localization-pack-012
+    
+    dfr-infra-odoo-app-container-019--dfr-ops-ci-cd-pipeline-022: 6. Deployment Status (Success/Failure)
+    deactivate dfr-infra-odoo-app-container-019
+
+    alt 7. [If Deployment Failed]
+        dfr-ops-ci-cd-pipeline-022-dfr-ops-ci-cd-pipeline-022: 7.1. Log deployment failure
+        dfr-ops-ci-cd-pipeline-022-dfr-ops-ci-cd-pipeline-022: 7.2. Notify Admin: Deployment failed (Signal to external monitoring/alerting)
+    else 7.else. [If Deployment Successful]
+        dfr-ops-ci-cd-pipeline-022-dfr-ops-ci-cd-pipeline-022: 7.else.1. Log deployment success
+    end
+    deactivate dfr-ops-ci-cd-pipeline-022
+
+    note over Translator, dfr-module-localization-pack-012: The 'Odoo Instance (Container)' participant represents a single country's DFR instance. This entire localization update flow is repeated for each country instance requiring the update.

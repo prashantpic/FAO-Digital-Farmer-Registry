@@ -1,0 +1,76 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'dfr-platform'
+
+rule_files:
+  - '/etc/prometheus/rules/general_system_alerts.yml'
+  - '/etc/prometheus/rules/odoo_specific_alerts.yml'
+  - '/etc/prometheus/rules/postgres_specific_alerts.yml'
+  - '/etc/prometheus/rules/nginx_specific_alerts.yml'
+  - '/etc/prometheus/rules/backup_failure_alerts.yml'
+
+#scrape_config_files: # Use this if individual scrape config files are deployed separately
+#  - '/etc/prometheus/scrape_configs/odoo_exporter_jobs.yml'
+#  - '/etc/prometheus/scrape_configs/postgres_exporter_jobs.yml'
+#  - '/etc/prometheus/scrape_configs/nginx_exporter_jobs.yml'
+#  - '/etc/prometheus/scrape_configs/node_exporter_jobs.yml'
+#  - '/etc/prometheus/scrape_configs/backup_status_exporter_jobs.yml'
+
+# As per SDS 4.1.1 "For simplicity in this initial SDS, we'll assume direct inclusion...",
+# and given that individual scrape_config files are not in the generation list for *this* request,
+# their content (as defined in SDS 4.1.2.x) is included here directly.
+# If these files were generated and deployed separately, the `scrape_config_files` directive above would be used instead.
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'dfr_odoo_app'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['odoo_app_instance1_host:8070', 'odoo_app_instance2_host:8070'] # Placeholder for actual Odoo exporter endpoints
+        labels:
+          env: 'production'
+          country: 'CKI'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  - job_name: 'dfr_postgres_db'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['postgres_exporter_instance1_host:9187', 'postgres_exporter_instance2_host:9187'] # Placeholder for actual exporter endpoints
+        labels:
+          env: 'production'
+          country: 'CKI'
+
+  - job_name: 'dfr_nginx_proxy'
+    metrics_path: /metrics # or /stub_status for native module
+    static_configs:
+      - targets: ['nginx_instance1_host:9113', 'nginx_instance2_host:9113'] # Placeholder for actual exporter/stub_status endpoints
+        labels:
+          env: 'production'
+          country: 'CKI'
+
+  - job_name: 'dfr_host_nodes'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host1_ip:9100', 'host2_ip:9100'] # Placeholder for actual server IPs running Node Exporter
+        labels:
+          env: 'production'
+          role: 'app_server'
+
+  - job_name: 'dfr_backup_status'
+    metrics_path: /metrics # Path for the backup status exporter
+    static_configs:
+      - targets: ['backup_monitor_host:9901'] # Placeholder for the backup status exporter endpoint
+        labels:
+          env: 'production'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - 'alertmanager:9093'

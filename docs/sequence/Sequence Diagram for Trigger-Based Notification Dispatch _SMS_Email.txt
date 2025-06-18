@@ -1,0 +1,42 @@
+sequenceDiagram
+    actor "Source Odoo Module/Automated Action" as SourceOdooBusinessEventContext
+    participant "Notification System Module" as dfr-module-notifications-engine-007
+    participant "Farmer Registry Module" as dfr-module-farmer-registry-002
+    participant "External Integration Connectors Module" as dfr-module-external-connectors-009
+    actor "External SMS/Email Gateway" as ExternalSMSEmailGateway
+    actor "Recipient Device/Client" as RecipientDevice
+
+    SourceOdooBusinessEventContext-dfr-module-notifications-engine-007: 1. requestNotificationDispatch(eventtype, targetentityid, contextdata)
+    activate dfr-module-notifications-engine-007
+
+    dfr-module-notifications-engine-007-dfr-module-notifications-engine-007: 2. Identify Notification Rule & Template (REQ-NS-001, REQ-NS-002)
+
+    dfr-module-notifications-engine-007-dfr-module-farmer-registry-002: 3. getRecipientContactDetails(targetentityid)
+    activate dfr-module-farmer-registry-002
+    dfr-module-farmer-registry-002--dfr-module-notifications-engine-007: contactdetails (phone, email, languagecode)
+    deactivate dfr-module-farmer-registry-002
+
+    dfr-module-notifications-engine-007-dfr-module-notifications-engine-007: 4. Populate Localized Template (using QWeb/Jinja) (REQ-NS-002, REQ-NS-005)
+
+    dfr-module-notifications-engine-007-dfr-module-external-connectors-009: 5. sendPreparedMessage(channel, recipientaddress, formattedmessagecontent, gatewayconfig)
+    activate dfr-module-external-connectors-009
+
+    note over dfr-module-external-connectors-009: Retry logic and circuit breaker patterns for external gateway calls are managed by the 'External Integration Connectors Module' to enhance resilience.
+    dfr-module-external-connectors-009-dfr-module-external-connectors-009: 5.1 Internal: Apply Retry/Circuit Breaker Policy (if configured)
+    
+    dfr-module-external-connectors-009-ExternalSMSEmailGateway: 5.2 HTTP POST /api/sendmessage (to, from, body, authtoken) (REQ-NS-003)
+    activate ExternalSMSEmailGateway
+    ExternalSMSEmailGateway--dfr-module-external-connectors-009: HTTP Response (e.g., 200 OK with MessageID / 4xx/5xx Error)
+    deactivate ExternalSMSEmailGateway
+
+    dfr-module-external-connectors-009--dfr-module-notifications-engine-007: dispatchattemptresult (status, externalmessageid, errorinfo)
+    deactivate dfr-module-external-connectors-009
+
+    dfr-module-notifications-engine-007-dfr-module-notifications-engine-007: 6. Log Notification Attempt (status, externalid, error) (REQ-NS-004)
+    deactivate dfr-module-notifications-engine-007
+
+    ExternalSMSEmailGateway-RecipientDevice: 7. Delivers SMS/Email to Recipient
+    activate RecipientDevice
+    deactivate RecipientDevice
+
+    note over SourceOdooBusinessEventContext,RecipientDevice: This sequence assumes successful dispatch. Error handling (e.g., gateway error, invalid recipient) would involve logging the failure and potentially alerting administrators as per REQ-NS-004.

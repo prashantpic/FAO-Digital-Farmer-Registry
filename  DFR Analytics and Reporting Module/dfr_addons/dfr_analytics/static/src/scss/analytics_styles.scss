@@ -1,0 +1,54 @@
+/* dfr_addons/dfr_analytics/static/src/scss/analytics_styles.scss */
+
+.o_dfr_analytics_dashboard {
+    .dashboard_filters {
+        border: 1px solid #dee2e6; // Light border for filter section
+    }
+
+    .kpi_widgets_container {
+        /* Handled by Bootstrap row/col classes in template */
+    }
+
+    .chart_widgets_container {
+         .chart_widget {
+             .card-body {
+                 min-height: 300px; // Ensure charts have a minimum height
+                 canvas {
+                     // Chart.js responsive options usually handle this well.
+                     // Max height can be set via chart options if needed.
+                 }
+             }
+         }
+    }
+}
+
+.o_dfr_kpi_widget {
+    .kpi_title {
+        font-size: 0.9rem;
+    }
+    .kpi_value {
+        font-size: 2rem;
+        font-weight: 500;
+    }
+    .kpi_trend {
+        font-size: 0.85rem;
+    }
+}
+
+/* Ensure map container has a defined height */
+#dfr-map-container {
+    background-color: #f8f9fa; /* Light background for map area before tiles load */
+}
+
+/* Leaflet specific overrides if needed */
+/* Example: Make popups slightly wider */
+/*
+.leaflet-popup-content-wrapper {
+    max-width: 350px !important;
+}
+.leaflet-popup-content {
+    margin: 13px 20px 13px 20px !important; // Adjust padding
+    font-size: 13px;
+    line-height: 1.5;
+}
+*/

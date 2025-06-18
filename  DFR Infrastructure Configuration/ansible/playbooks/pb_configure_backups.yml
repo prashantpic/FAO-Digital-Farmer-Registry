@@ -1,0 +1,78 @@
+---
+# Ansible playbook to configure database and file system backups for DFR instances.
+# This playbook applies the 'backup_config' role to relevant hosts.
+
+# Usage:
+# ansible-playbook -i inventories/your_inventory.ini playbooks/pb_configure_backups.yml --extra-vars "s3_backup_bucket=my-dfr-backups-bucket aws_access_key=yourkey aws_secret_key=yoursecret"
+# It's highly recommended to use Ansible Vault for sensitive variables like AWS credentials.
+
+- name: Configure Database Backups
+  hosts: postgres_db_servers # Or 'odoo_app_servers' if pg_dump is run from there for RDS
+  become: true
+  # This play assumes 'postgres_db_servers' group exists if not using RDS,
+  # or 'odoo_app_servers' are configured to backup a remote RDS.
+  # The 'backup_config' role needs to handle conditional logic based on 'backup_target_type'.
+  when: groups['postgres_db_servers'] | length > 0 or (deploy_managed_db_service_flag | default(false) | bool and groups['odoo_app_servers'] | length > 0)
+  roles:
+    - role: backup_config
+      tags: ['backup', 'database_backup']
+  vars_files:
+    - "{{ inventory_dir }}/../group_vars/all.yml"
+    # - "{{ inventory_dir }}/../vault.yml" # For secrets like S3 credentials, DB passwords for backup user
+  vars:
+    backup_target_type: "database" # Instructs the role what to back up
+    # Variables for database backup (PostgreSQL specific example)
+    postgres_db_name_to_backup: "{{ odoo_db_name | default('odoodb') }}"
+    postgres_backup_user: "{{ db_backup_user | default('backup_user') }}" # Ensure this user has read access
+    postgres_backup_password: "{{ vault_db_backup_password | default('secure_backup_password') }}"
+    # RDS endpoint if applicable, or local if postgres_db_servers are targeted
+    postgres_host_for_backup: >-
+      {{
+        terraform_rds_endpoint
+        if (deploy_managed_db_service_flag | default(true) | bool)
+        else (
+          hostvars[inventory_hostname]['ansible_default_ipv4']['address']
+          if inventory_hostname in groups['postgres_db_servers']
+          else 'localhost'
+        )
+      }}
+    backup_script_path: "/opt/scripts/backup_postgres.sh"
+    backup_storage_path_local: "/var/backups/postgresql"
+    backup_cron_schedule: "0 2 * * *" # Daily at 2 AM
+    
+    # S3 specific (example, role should handle different remote storages)
+    remote_backup_enabled: true
+    remote_backup_type: "s3" # Could be 'azure_blob', 'gcs' etc.
+    s3_bucket_name: "{{ vault_s3_backup_bucket | default('dfr-default-backup-bucket') }}"
+    s3_bucket_path_prefix: "database_backups/{{ inventory_hostname }}/"
+    # AWS credentials should ideally be handled by IAM roles on EC2 or fetched securely.
+    # aws_access_key_id: "{{ vault_aws_access_key_id }}"
+    # aws_secret_access_key: "{{ vault_aws_secret_access_key }}"
+    # aws_default_region: "{{ vault_aws_region | default('ap-southeast-2') }}"
+
+- name: Configure Odoo Filestore Backups
+  hosts: odoo_app_servers # This group should exist in your inventory
+  become: true
+  when: groups['odoo_app_servers'] | length > 0
+  roles:
+    - role: backup_config
+      tags: ['backup', 'filestore_backup']
+  vars_files:
+    - "{{ inventory_dir }}/../group_vars/all.yml"
+    # - "{{ inventory_dir }}/../vault.yml"
+  vars:
+    backup_target_type: "filestore" # Instructs the role what to back up
+    odoo_filestore_source_path: "{{ odoo_filestore_path | default('/opt/odoo/data/filestore') }}" # From odoo_app_config role vars or inventory
+    backup_script_path: "/opt/scripts/backup_filestore.sh"
+    backup_storage_path_local: "/var/backups/odoo_filestore"
+    backup_cron_schedule: "0 3 * * *" # Daily at 3 AM
+
+    # S3 specific (example, role should handle different remote storages)
+    remote_backup_enabled: true
+    remote_backup_type: "s3"
+    s3_bucket_name: "{{ vault_s3_backup_bucket | default('dfr-default-backup-bucket') }}" # Same bucket, different prefix
+    s3_bucket_path_prefix: "filestore_backups/{{ inventory_hostname }}/"
+    # AWS credentials (as above)
+    # aws_access_key_id: "{{ vault_aws_access_key_id }}"
+    # aws_secret_access_key: "{{ vault_aws_secret_access_key }}"
+    # aws_default_region: "{{ vault_aws_region | default('ap-southeast-2') }}"

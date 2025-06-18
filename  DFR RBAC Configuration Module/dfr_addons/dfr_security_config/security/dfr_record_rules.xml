@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <odoo>
+        <data>
+
+            <!-- Record Rule: DFR National Admin - Country Scope -->
+            <!-- This rule assumes each country instance uses a separate Odoo company. -->
+            <!-- If not, an alternative like user.country_id would be needed on relevant models. -->
+            <record id="rule_dfr_national_admin_country_scope_farmer" model="ir.rule">
+                <field name="name">DFR National Admin: Country Scope (Farmer)</field>
+                <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/> <!-- Adjust ref based on actual model XML ID -->
+                <field name="domain_force">[('company_id','=',user.company_id.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_national_admin'))]"/>
+                <field name="perm_read" eval="True"/>
+                <field name="perm_write" eval="True"/>
+                <field name="perm_create" eval="True"/>
+                <field name="perm_unlink" eval="True"/>
+            </record>
+            <!-- Add similar country scope rules for National Admin for other key DFR models: -->
+            <!-- dfr_farmer_registry.household, dfr_farmer_registry.plot, dfr_dynamic_forms.form_submission, etc. -->
+             <record id="rule_dfr_national_admin_country_scope_household" model="ir.rule">
+                <field name="name">DFR National Admin: Country Scope (Household)</field>
+                <field name="model_id" ref="dfr_farmer_registry.model_dfr_household"/>
+                <field name="domain_force">[('company_id','=',user.company_id.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_national_admin'))]"/>
+            </record>
+             <record id="rule_dfr_national_admin_country_scope_plot" model="ir.rule">
+                <field name="name">DFR National Admin: Country Scope (Plot)</field>
+                <field name="model_id" ref="dfr_farmer_registry.model_dfr_plot"/>
+                <field name="domain_force">[('company_id','=',user.company_id.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_national_admin'))]"/>
+            </record>
+            <record id="rule_dfr_national_admin_country_scope_form_submission" model="ir.rule">
+                <field name="name">DFR National Admin: Country Scope (Form Submission)</field>
+                <field name="model_id" ref="dfr_dynamic_forms.model_dfr_form_submission"/>
+                <field name="domain_force">[('company_id','=',user.company_id.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_national_admin'))]"/>
+            </record>
+
+
+            <!-- Record Rule: DFR Supervisor - Administrative Area Scope -->
+            <!-- This rule assumes Supervisors have an 'administrative_area_ids' field on their user record (res.users) -->
+            <!-- or that target models have a link to an administrative area manageable by the supervisor. -->
+            <!-- This example assumes target models (e.g., farmer) have an 'administrative_area_id'. -->
+            <record id="rule_dfr_supervisor_admin_area_scope_farmer" model="ir.rule">
+                <field name="name">DFR Supervisor: Admin Area Scope (Farmer)</field>
+                <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+                <!-- Example: user.dfr_supervisor_administrative_area_ids is a many2many field on res.users -->
+                <field name="domain_force">['|', ('administrative_area_id', '=', False), ('administrative_area_id', 'child_of', user.dfr_supervisor_administrative_area_ids.ids)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_supervisor'))]"/>
+            </record>
+            <!-- Add similar admin area scope rules for Supervisor for other DFR models. -->
+
+
+            <!-- Record Rule: DFR Enumerator - Assigned Administrative Area Scope -->
+            <!-- This rule assumes Enumerators have an 'administrative_area_id' (many2one) field on their user record. -->
+            <!-- And target models (e.g., farmer) also have an 'administrative_area_id'. -->
+            <record id="rule_dfr_enumerator_assigned_area_scope_farmer" model="ir.rule">
+                <field name="name">DFR Enumerator: Assigned Area Scope (Farmer)</field>
+                <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+                <!-- Example: user.dfr_enumerator_administrative_area_id is a many2one field on res.users -->
+                <field name="domain_force">['|', ('administrative_area_id', '=', False), ('administrative_area_id', '=', user.dfr_enumerator_administrative_area_id.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_enumerator'))]"/>
+            </record>
+            <!-- Add similar assigned area scope rules for Enumerator for other DFR models. -->
+
+            <!-- Record Rule: Farmer Portal User - Own Data Access -->
+            <!-- Example: Farmer can only see their own farmer record linked to their portal user. -->
+            <!-- This assumes dfr.farmer has a 'user_id' field linking to res.users (portal user). -->
+            <record id="rule_dfr_farmer_portal_user_own_farmer_record" model="ir.rule">
+                <field name="name">DFR Farmer Portal User: Own Farmer Record</field>
+                <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+                <field name="domain_force">[('user_id','=',user.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_farmer_portal_user'))]"/>
+                <field name="perm_read" eval="True"/>
+                <field name="perm_write" eval="False"/> <!-- Typically portal users don't directly edit core data -->
+                <field name="perm_create" eval="False"/>
+                <field name="perm_unlink" eval="False"/>
+            </record>
+            <!-- Example: Farmer Portal User can see their own form submissions. -->
+            <record id="rule_dfr_farmer_portal_user_own_submissions" model="ir.rule">
+                <field name="name">DFR Farmer Portal User: Own Form Submissions</field>
+                <field name="model_id" ref="dfr_dynamic_forms.model_dfr_form_submission"/>
+                <!-- This assumes form_submission has a many2one to dfr.farmer, and dfr.farmer has user_id -->
+                <field name="domain_force">[('farmer_id.user_id','=',user.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_farmer_portal_user'))]"/>
+            </record>
+
+            <!-- Policy Analyst: Read-only access, possibly to all data within their country context if using company_id for scoping -->
+            <record id="rule_dfr_policy_analyst_country_scope_farmer_read" model="ir.rule">
+                <field name="name">DFR Policy Analyst: Country Scope Read (Farmer)</field>
+                <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+                <field name="domain_force">[('company_id','=',user.company_id.id)]</field>
+                <field name="groups" eval="[(4, ref('dfr_security_config.group_dfr_policy_analyst'))]"/>
+                <field name="perm_read" eval="True"/>
+                <field name="perm_write" eval="False"/>
+                <field name="perm_create" eval="False"/>
+                <field name="perm_unlink" eval="False"/>
+            </record>
+            <!-- Add similar read-only country scope rules for Policy Analyst for other relevant DFR models -->
+
+
+            <!-- Super Admin and IT Team typically bypass most restrictive record rules or have specific global "allow" rules. -->
+            <!-- Odoo's group_system (often implied by Super Admin / IT Team) usually bypasses record rules by default, -->
+            <!-- unless a rule explicitly includes them with a restrictive domain. -->
+            <!-- If specific "see all data" rules are needed for them, they can be added, but often not required if they are system admins. -->
+
+            <!-- Ensure model_id refs are correct (e.g., dfr_farmer_registry.model_dfr_farmer, dfr_dynamic_forms.model_dfr_form_template). -->
+            <!-- Domain logic for supervisor/enumerator scope will depend on how users are linked to administrative areas or assignments in other DFR modules. -->
+            <!-- Placeholders like `user.dfr_supervisor_administrative_area_ids` and `user.dfr_enumerator_administrative_area_id` indicate fields that would need to be added to `res.users` model (potentially in dfr_common_core or another module that extends users). -->
+
+        </data>
+    </odoo>

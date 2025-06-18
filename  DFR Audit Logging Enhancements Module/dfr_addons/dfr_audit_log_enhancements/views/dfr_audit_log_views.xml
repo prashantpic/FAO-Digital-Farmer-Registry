@@ -1,0 +1,101 @@
+<odoo>
+    <data>
+        <!-- Tree View (List View) -->
+        <record id="view_dfr_audit_log_tree" model="ir.ui.view">
+            <field name="name">dfr.audit.log.tree</field>
+            <field name="model">dfr.audit.log</field>
+            <field name="arch" type="xml">
+                <tree string="DFR Audit Logs" decoration-danger="status=='failure'">
+                    <field name="timestamp"/>
+                    <field name="user_id"/>
+                    <field name="event_type"/>
+                    <field name="model_id" optional="hide"/>
+                    <field name="res_id" optional="hide"/>
+                    <field name="description"/>
+                    <field name="session_info" optional="hide"/>
+                    <field name="status" optional="show"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Form View -->
+        <record id="view_dfr_audit_log_form" model="ir.ui.view">
+            <field name="name">dfr.audit.log.form</field>
+            <field name="model">dfr.audit.log</field>
+            <field name="arch" type="xml">
+                <form string="DFR Audit Log Entry">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="timestamp"/>
+                                <field name="user_id"/>
+                                <field name="event_type"/>
+                            </group>
+                            <group>
+                                <field name="model_id"/>
+                                <field name="res_id"/>
+                                <field name="status"/>
+                                <field name="session_info"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Details">
+                                <group>
+                                    <field name="description" widget="text"/>
+                                    <field name="technical_details" widget="text" placeholder="JSON formatted technical details..."/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Search View -->
+        <record id="view_dfr_audit_log_search" model="ir.ui.view">
+            <field name="name">dfr.audit.log.search</field>
+            <field name="model">dfr.audit.log</field>
+            <field name="arch" type="xml">
+                <search string="Search DFR Audit Logs">
+                    <field name="user_id"/>
+                    <field name="event_type"/>
+                    <field name="model_id"/>
+                    <field name="res_id"/> <!-- Search on Reference field works by display_name -->
+                    <field name="description" filter_domain="[('description', 'ilike', self)]"/>
+                    <field name="session_info" string="IP/Session" filter_domain="[('session_info', 'ilike', self)]"/>
+                    
+                    <filter string="Today" name="filter_today" 
+                            domain="[('timestamp', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')), ('timestamp', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                    <filter string="This Week" name="filter_this_week"
+                            domain="[('timestamp', '&gt;=', (context_today() - datetools.relativedelta(weeks=1, weekday=0)).strftime('%Y-%m-%d 00:00:00')), ('timestamp', '&lt;=', (context_today() + datetools.relativedelta(weekday=6)).strftime('%Y-%m-%d 23:59:59'))]"/>
+                    <filter string="Successful Events" name="filter_successful" domain="[('status', '=', 'success')]"/>
+                    <filter string="Failed Events" name="filter_failed" domain="[('status', '=', 'failure')]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter string="User" name="group_by_user" context="{'group_by': 'user_id'}"/>
+                        <filter string="Event Type" name="group_by_event_type" context="{'group_by': 'event_type'}"/>
+                        <filter string="Target Model" name="group_by_model" context="{'group_by': 'model_id'}"/>
+                        <filter string="Date (Day)" name="group_by_date" context="{'group_by': 'timestamp:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action Window -->
+        <record id="action_dfr_audit_log_view" model="ir.actions.act_window">
+            <field name="name">DFR Audit Logs</field>
+            <field name="res_model">dfr.audit.log</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_dfr_audit_log_search"/>
+            <field name="context">{'search_default_filter_today': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No audit log entries found.
+                </p><p>
+                    This log records important user actions and system events.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

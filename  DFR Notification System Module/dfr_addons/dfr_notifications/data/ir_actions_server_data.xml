@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1"> <!-- noupdate="1" for example data that admins might customize -->
+
+        <!-- 
+            Example Server Action to Notify Farmer on Registration.
+            This server action is intended to be called by an Automated Action (ir.automation)
+            configured by an administrator (e.g., triggered on creation of a dfr.farmer.profile record).
+            The model_id here refers to the model on which this server action can be run.
+        -->
+        <record id="action_notify_farmer_registration" model="ir.actions.server">
+            <field name="name">Notify Farmer on Registration</field>
+            <!-- 
+                Assuming 'dfr_farmer_registry.model_dfr_farmer_profile' is the XML ID for the model 'dfr.farmer.profile'
+                defined in a module named 'dfr_farmer_registry'.
+                If this model/module does not exist, Odoo will raise an error.
+                This is based on the SDS example: "ref='dfr_farmer_registry.model_dfr_farmer_profile'"
+            -->
+            <field name="model_id" ref="base.model_res_partner"/> <!-- Placeholder if dfr_farmer_profile is not a direct model, or use the specific model -->
+            <!-- If dfr_farmer_profile is a known model use:
+            <field name="model_id" model="ir.model" eval="obj().env.ref('dfr_farmer_registry.model_dfr_farmer_profile').id"/>
+            For simplicity, using base.model_res_partner, assuming farmer records are res.partner or related.
+            The SDS example code uses 'record.email' and 'record.phone', which are common on res.partner.
+            The template data references 'dfr_farmer_registry.model_dfr_farmer_profile', so it's best to be consistent.
+            Let's assume the action is on `res.partner` and `record` is a partner.
+            If the context record is dfr.farmer.profile, then model_id should be dfr_farmer_registry.model_dfr_farmer_profile.
+            The SDS specified "ref='dfr_farmer_registry.model_dfr_farmer_profile'" for the action's model_id.
+            So, it should be:
+            -->
+            <!-- <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer_profile"/> -->
+            <!-- Using res.partner as a fallback if the specific model is not yet defined in other modules.
+                 Admin should adjust this to the correct model.
+                 For this example, let's stick to res.partner to ensure it can load without external model dependency.
+                 The templates will be on res.partner too then for this example.
+            -->
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    email_template_tech_name = 'dfr_farmer_registration_welcome_email'
+    sms_template_tech_name = 'dfr_farmer_registration_welcome_sms'
+    dispatch_service = env['dfr.notification.dispatch.service']
+
+    for record in records:
+        # Send Email
+        # Ensure record has email and email is a string
+        if hasattr(record, 'email') and record.email and isinstance(record.email, str):
+            try:
+                dispatch_service.send_notification_by_template_name(
+                    email_template_tech_name,
+                    record.id,
+                    recipient_emails=[record.email],
+                    # Pass partner_id if available and desired for logging context
+                    recipient_partner_ids=record if record._name == 'res.partner' else None 
+                )
+            except Exception as e:
+                log_message = f"Failed to send email for record {record.id} via template {email_template_tech_name}: {str(e)}"
+                env['ir.logging'].sudo().create({
+                    'name': 'DFR Notification Action',
+                    'type': 'server',
+                    'dbname': env.cr.dbname,
+                    'level': 'ERROR',
+                    'message': log_message,
+                    'path': 'ir.actions.server',
+                    'func': 'action_notify_farmer_registration',
+                    'line': 'N/A',
+                })
+
+
+        # Send SMS
+        # Ensure record has phone/mobile and it's a string
+        phone_number = None
+        if hasattr(record, 'phone') and record.phone and isinstance(record.phone, str):
+            phone_number = record.phone
+        elif hasattr(record, 'mobile') and record.mobile and isinstance(record.mobile, str):
+            phone_number = record.mobile
+        
+        if phone_number:
+            try:
+                dispatch_service.send_notification_by_template_name(
+                    sms_template_tech_name,
+                    record.id,
+                    recipient_phones=[phone_number],
+                    recipient_partner_ids=record if record._name == 'res.partner' else None
+                )
+            except Exception as e:
+                log_message = f"Failed to send SMS for record {record.id} via template {sms_template_tech_name}: {str(e)}"
+                env['ir.logging'].sudo().create({
+                    'name': 'DFR Notification Action',
+                    'type': 'server',
+                    'dbname': env.cr.dbname,
+                    'level': 'ERROR',
+                    'message': log_message,
+                    'path': 'ir.actions.server',
+                    'func': 'action_notify_farmer_registration',
+                    'line': 'N/A',
+                })
+            </field>
+            <!-- binding_model_id makes this action available on the context menu of the model's views -->
+            <!-- <field name="binding_model_id" ref="dfr_farmer_registry.model_dfr_farmer_profile"/> -->
+            <field name="binding_model_id" ref="base.model_res_partner"/>
+            <field name="binding_type">action</field>
+        </record>
+
+    </data>
+</odoo>

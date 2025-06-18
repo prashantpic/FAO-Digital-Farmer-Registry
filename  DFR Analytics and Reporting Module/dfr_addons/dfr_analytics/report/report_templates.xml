@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Farmer Statistics PDF Report Document Template -->
+        <template id="report_farmer_statistics_pdf_document">
+            <t t-call="web.html_container">
+                <t t-call="web.external_layout"> <!-- Or dfr_common.external_layout if a custom DFR layout exists -->
+                    <div class="page">
+                        <h2 class="text-center mt16">Farmer Statistics Report</h2>
+                        <p class="text-center">Report Date: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S %Z')"/></p>
+
+                        <t t-if="filters">
+                             <h3 class="mt16">Filters Applied:</h3>
+                             <table class="table table-sm table-condensed">
+                                 <tr t-if="filters.get('date_from')"><td><strong>Date From:</strong></td><td><span t-esc="filters.get('date_from')"/></td></tr>
+                                 <tr t-if="filters.get('date_to')"><td><strong>Date To:</strong></td><td><span t-esc="filters.get('date_to')"/></td></tr>
+                                 <tr t-if="filters.get('geographic_area_ids')">
+                                     <td><strong>Geographic Areas:</strong></td>
+                                     <td><span t-esc="', '.join(env['dfr.administrative.area'].browse(filters.get('geographic_area_ids')).mapped('name'))"/></td>
+                                 </tr>
+                                 <tr t-if="filters.get('farmer_status_ids')">
+                                     <td><strong>Farmer Statuses:</strong></td>
+                                     <td><span t-esc="', '.join(env['dfr.farmer.status'].browse(filters.get('farmer_status_ids')).mapped('name'))"/></td>
+                                 </tr>
+                             </table>
+                        </t>
+
+                        <h3 class="mt16">Overall KPIs</h3>
+                        <table class="table table-sm table-borderless">
+                            <tbody>
+                                <tr><td style="width:50%;"><strong>Total Registered Farmers:</strong></td><td><span t-esc="report_data.get('total_registrations', 'N/A')"/></td></tr>
+                                <tr><td><strong>Total Plots Recorded:</strong></td><td><span t-esc="report_data.get('total_plots', 'N/A')"/></td></tr>
+                                <tr><td><strong>Total Land Area (Ha):</strong></td><td><span t-esc="'%.2f' % report_data.get('total_land_area', 0.0) if report_data.get('total_land_area') is not None else 'N/A'"/></td></tr>
+                                <tr><td><strong>Average Plot Size (Ha):</strong></td><td><span t-esc="'%.2f' % report_data.get('average_plot_size', 0.0) if report_data.get('average_plot_size') is not None else 'N/A'"/></td></tr>
+                            </tbody>
+                        </table>
+
+                        <t t-if="report_data.get('gender_disaggregation')">
+                            <h3 class="mt16">Gender Disaggregation</h3>
+                            <table class="table table-sm table-bordered">
+                                <thead class="thead-light"><tr><th>Gender</th><th class="text-right">Count</th></tr></thead>
+                                <tbody>
+                                    <t t-foreach="report_data.get('gender_disaggregation', {})" t-as="gender_data_item">
+                                        <tr>
+                                            <td t-esc="gender_data_item_key"/>
+                                            <td class="text-right" t-esc="gender_data_item_value"/>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+
+                        <t t-if="report_data.get('age_distribution') and any(report_data.get('age_distribution').values())">
+                             <h3 class="mt16">Age Distribution</h3>
+                             <table class="table table-sm table-bordered">
+                                <thead class="thead-light"><tr><th>Age Group</th><th class="text-right">Count</th></tr></thead>
+                                <tbody>
+                                    <t t-foreach="report_data.get('age_distribution', {})" t-as="age_data_item">
+                                        <tr>
+                                            <td t-esc="age_data_item_key"/>
+                                            <td class="text-right" t-esc="age_data_item_value"/>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                             </table>
+                         </t>
+
+                        <t t-if="report_data.get('registration_trends')">
+                            <h3 class="mt16">Registration Trends (Monthly)</h3>
+                            <table class="table table-sm table-bordered">
+                                <thead class="thead-light"><tr><th>Period</th><th class="text-right">Count</th></tr></thead>
+                                <tbody>
+                                    <t t-foreach="report_data.get('registration_trends', [])" t-as="trend">
+                                        <tr>
+                                            <td t-esc="trend.get('period')"/>
+                                            <td class="text-right" t-esc="trend.get('count')"/>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+                         <t t-if="report_data.get('land_distribution_by_size') and any(report_data.get('land_distribution_by_size').values())">
+                             <h3 class="mt16">Landholding Size Distribution</h3>
+                              <table class="table table-sm table-bordered">
+                                <thead class="thead-light"><tr><th>Size Category</th><th class="text-right">Count</th></tr></thead>
+                                <tbody>
+                                    <t t-foreach="report_data.get('land_distribution_by_size', {})" t-as="land_dist_item">
+                                        <tr>
+                                            <td t-esc="land_dist_item_key"/>
+                                            <td class="text-right" t-esc="land_dist_item_value"/>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                             </table>
+                         </t>
+                    </div>
+                </t>
+            </t>
+        </template>
+
+        <template id="report_farmer_statistics_pdf">
+             <t t-call="web.basic_layout">
+                <t t-foreach="docs if docs else [0]" t-as="o"> <!-- docs here is the dfr.report.export.wizard record -->
+                    <t t-set="filters_dict" t-value="{
+                        'date_from': o.date_from,
+                        'date_to': o.date_to,
+                        'geographic_area_ids': o.geographic_area_ids.ids,
+                        'farmer_status_ids': o.farmer_status_ids.ids,
+                    }"/>
+                    <t t-set="report_content" t-value="env['report.dfr_analytics.report_farmer_statistics_pdf']._get_report_values(docids=o.ids, data={'filters': filters_dict, 'form_values': o.read()[0]})"/>
+                    <t t-call="dfr_analytics.report_farmer_statistics_pdf_document" t-lang="user.lang">
+                        <t t-set="filters" t-value="report_content['filters']"/>
+                        <t t-set="report_data" t-value="report_content['report_data']"/>
+                        <t t-set="datetime" t-value="report_content['datetime']"/>
+                        <t t-set="context_timestamp" t-value="report_content['context_timestamp']"/>
+                    </t>
+                </t>
+             </t>
+        </template>
+
+
+        <template id="report_dynamic_form_summary_pdf_document">
+             <t t-call="web.html_container">
+                <t t-call="web.external_layout">
+                     <div class="page">
+                        <h2 class="text-center mt16">Dynamic Form Report: <span t-esc="report_data.get('form_name', 'Summary')"/></h2>
+                        <p class="text-center">Report Date: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S %Z')"/></p>
+
+                        <t t-if="filters">
+                             <h3 class="mt16">Filters Applied:</h3>
+                             <table class="table table-sm table-condensed">
+                                 <tr t-if="filters.get('date_from')"><td><strong>Date From:</strong></td><td><span t-esc="filters.get('date_from')"/></td></tr>
+                                 <tr t-if="filters.get('date_to')"><td><strong>Date To:</strong></td><td><span t-esc="filters.get('date_to')"/></td></tr>
+                                 <tr t-if="filters.get('geographic_area_ids')">
+                                     <td><strong>Geographic Areas:</strong></td>
+                                     <td><span t-esc="', '.join(env['dfr.administrative.area'].browse(filters.get('geographic_area_ids')).mapped('name'))"/></td>
+                                 </tr>
+                                  <tr t-if="filters.get('farmer_status_ids')"> <!-- Assuming dynamic form submissions can also be filtered by farmer status -->
+                                     <td><strong>Farmer Statuses:</strong></td>
+                                     <td><span t-esc="', '.join(env['dfr.farmer.status'].browse(filters.get('farmer_status_ids')).mapped('name'))"/></td>
+                                 </tr>
+                             </table>
+                        </t>
+
+                        <h3 class="mt16">Summary</h3>
+                        <p><strong>Total Submissions:</strong> <span t-esc="report_data.get('total_submissions', 'N/A')"/></p>
+
+                        <t t-if="report_data.get('response_distribution') and report_data.get('form_name') != 'All Forms'">
+                            <h3 class="mt16">Response Distributions for Selectable Fields</h3>
+                            <t t-foreach="report_data.get('response_distribution', {})" t-as="field_data">
+                                <h4 class="mt16"><t t-esc="field_data_key"/></h4>
+                                <table class="table table-sm table-bordered">
+                                    <thead class="thead-light"><tr><th>Option</th><th class="text-right">Count</th></tr></thead>
+                                    <tbody>
+                                         <t t-foreach="field_data_value" t-as="option_data">
+                                            <tr>
+                                                <td t-esc="option_data_key"/>
+                                                <td class="text-right" t-esc="option_data_value"/>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </t>
+                        </t>
+                        <t t-if="report_data.get('submissions_per_form') and report_data.get('form_name') == 'All Forms'">
+                             <h3 class="mt16">Submissions per Form</h3>
+                             <table class="table table-sm table-bordered">
+                                    <thead class="thead-light"><tr><th>Form Name</th><th class="text-right">Count</th></tr></thead>
+                                    <tbody>
+                                         <t t-foreach="report_data.get('submissions_per_form', {})" t-as="form_data_item">
+                                            <tr>
+                                                <td t-esc="form_data_item_key"/>
+                                                <td class="text-right" t-esc="form_data_item_value"/>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </template>
+
+        <template id="report_dynamic_form_summary_pdf">
+             <t t-call="web.basic_layout">
+                <t t-foreach="docs if docs else [0]" t-as="o"> <!-- docs here is the dfr.report.export.wizard record -->
+                     <t t-set="filters_dict" t-value="{
+                        'date_from': o.date_from,
+                        'date_to': o.date_to,
+                        'geographic_area_ids': o.geographic_area_ids.ids,
+                        'farmer_status_ids': o.farmer_status_ids.ids,
+                    }"/>
+                    <t t-set="report_content" t-value="env['report.dfr_analytics.report_dynamic_form_summary_pdf']._get_report_values(docids=o.ids, data={'filters': filters_dict, 'form_id': o.dynamic_form_id.id if o.dynamic_form_id else False, 'form_values': o.read()[0]})"/>
+                    <t t-call="dfr_analytics.report_dynamic_form_summary_pdf_document" t-lang="user.lang">
+                        <t t-set="filters" t-value="report_content['filters']"/>
+                        <t t-set="report_data" t-value="report_content['report_data']"/>
+                        <t t-set="form" t-value="report_content['form']"/>
+                        <t t-set="datetime" t-value="report_content['datetime']"/>
+                        <t t-set="context_timestamp" t-value="report_content['context_timestamp']"/>
+                    </t>
+                </t>
+             </t>
+        </template>
+    </data>
+</odoo>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1"> <!-- noupdate="1" for example data that admins might customize -->
+
+        <!-- 
+            For model_id, using base.model_res_partner as a common placeholder.
+            If specific models like dfr.farmer.profile or dfr.self.registration are used,
+            ensure their XML IDs (e.g., dfr_farmer_registry.model_dfr_farmer_profile) are correct
+            and the modules providing them are dependencies.
+            The server action example uses model_id based on dfr_farmer_profile, so templates should align.
+            For now, using res_partner for broader applicability if that specific module isn't present during install.
+            If dfr_farmer_registry and model_dfr_farmer_profile exist, change ref to it.
+        -->
+
+        <!-- Farmer Registration Welcome Email -->
+        <record id="template_farmer_registration_welcome_email" model="dfr.notification.template">
+            <field name="name">Farmer Registration Welcome Email</field>
+            <field name="technical_name">dfr_farmer_registration_welcome_email</field>
+            <field name="channel_type">email</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <!-- <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer_profile"/> -->
+            <field name="subject_template"><![CDATA[Welcome to DFR, <t t-esc="object.name"/>!]]></field>
+            <field name="body_template_qweb"><![CDATA[
+<p>Dear <t t-esc="object.name"/>,</p>
+<p>Welcome to the Digital Farmer Registry (DFR)! We are pleased to have you as a registered member.</p>
+<p>Your registration details:</p>
+<ul>
+    <li>Name: <t t-esc="object.name"/></li>
+    <t t-if="object.email"><li>Email: <t t-esc="object.email"/></li></t>
+    <t t-if="object.phone"><li>Phone: <t t-esc="object.phone"/></li></t>
+    <!-- Add other relevant fields from the 'object' (res.partner or dfr.farmer.profile) -->
+</ul>
+<p>Thank you for joining DFR.</p>
+<p>Best regards,<br/>The DFR Team</p>
+            ]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Farmer Registration Welcome SMS -->
+        <record id="template_farmer_registration_welcome_sms" model="dfr.notification.template">
+            <field name="name">Farmer Registration Welcome SMS</field>
+            <field name="technical_name">dfr_farmer_registration_welcome_sms</field>
+            <field name="channel_type">sms</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <!-- <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer_profile"/> -->
+            <field name="body_template_qweb"><![CDATA[Dear <t t-esc="object.name"/>, welcome to DFR! Your registration is successful. More details have been sent to your email if provided. - DFR Team]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Notification for Self-Registration Received (to Admin/Supervisor) -->
+        <record id="template_self_registration_received_admin" model="dfr.notification.template">
+            <field name="name">Admin: Self-Registration Received</field>
+            <field name="technical_name">dfr_self_registration_received_admin</field>
+            <field name="channel_type">email</field>
+            <!-- Assuming self-registration creates/updates a res.partner or a specific dfr.self.registration model -->
+            <!-- For this example, let's assume the context object is the res.partner created/updated. -->
+            <field name="model_id" ref="base.model_res_partner"/>
+            <!-- <field name="model_id" ref="your_module.model_dfr_self_registration_submission"/> -->
+            <field name="subject_template"><![CDATA[New DFR Self-Registration Received: <t t-esc="object.name or 'N/A'"/>]]></field>
+            <field name="body_template_qweb"><![CDATA[
+<p>Dear Administrator,</p>
+<p>A new self-registration has been received and requires your attention:</p>
+<ul>
+    <li>Name: <t t-esc="object.name or 'Not Provided'"/></li>
+    <t t-if="object.email"><li>Email: <t t-esc="object.email"/></li></t>
+    <t t-if="object.phone"><li>Phone: <t t-esc="object.phone"/></li></t>
+    <li>Record ID: <t t-esc="object.id"/></li>
+    <!-- Add other relevant fields from the 'object' -->
+</ul>
+<p>Please review this submission in the DFR portal.</p>
+<p>Regards,<br/>DFR Notification System</p>
+            ]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Notification for Farmer Profile Approval -->
+        <record id="template_farmer_profile_approved" model="dfr.notification.template">
+            <field name="name">Farmer Profile Approved Notification</field>
+            <field name="technical_name">dfr_farmer_profile_approved</field>
+            <field name="channel_type">email</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <!-- <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer_profile"/> -->
+            <field name="subject_template"><![CDATA[Your DFR Profile has been Approved: <t t-esc="object.name"/>]]></field>
+            <field name="body_template_qweb"><![CDATA[
+<p>Dear <t t-esc="object.name"/>,</p>
+<p>Congratulations! Your farmer profile in the Digital Farmer Registry (DFR) has been reviewed and approved.</p>
+<p>You can now access relevant services and information available to registered and approved farmers.</p>
+<p>If you have any questions, please contact our support team.</p>
+<p>Best regards,<br/>The DFR Team</p>
+            ]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

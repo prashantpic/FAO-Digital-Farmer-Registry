@@ -1,0 +1,254 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_DFR-PROMETHEUS",
+      "label": "DFR-Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "8.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Last Backup Status",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "backup_last_status{country=\"$country_instance\"}",
+          "instant": true,
+          "legendFormat": "{{backup_job_id | default \"Overall\"}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "Success", "color": "green"}, "1": {"text": "Failed", "color": "red"}}, "value": "0"},
+            {"type": "value", "options": {"1": {"text": "Failed", "color": "red"}}, "value": "1"}
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "green", "value": 0},
+              {"color": "red", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "orientation": "auto", "textMode": "value_and_name", "colorMode": "value", "graphMode": "area", "justifyMode": "auto"}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Time Since Last Successful Backup",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - backup_last_success_timestamp_seconds{country=\"$country_instance\"}",
+          "instant": true,
+          "legendFormat": "{{backup_job_id | default \"Overall\"}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 86400},
+              {"color": "red", "value": 90000}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "auto"}
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Backup Durations (Last 7 Days)",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "backup_duration_seconds{country=\"$country_instance\"}",
+          "legendFormat": "{{backup_job_id | default \"Duration\"}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "bars", "lineInterpolation": "linear", "barAlignment": 0, "lineWidth": 1, "fillOpacity": 80, "gradientMode": "none", "spanNulls": false, "showPoints": "auto", "pointSize": 5, "stacking": {"mode": "none", "group": "A"}, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": {"type": "linear"}, "axisCenteredZero": false, "hideFrom": {"tooltip": false, "viz": false, "legend": false}},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "calcs": []}, "tooltip": {"mode": "single", "sort": "none"}}
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Recent Backup History (Latest per Job)",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+      "targets": [
+        {
+          "refId": "Status",
+          "expr": "backup_last_status{country=\"$country_instance\", backup_job_id!=\"\"}",
+          "instant": true, "format": "table", "legendFormat": "Status"
+        },
+        {
+          "refId": "Timestamp",
+          "expr": "backup_last_success_timestamp_seconds{country=\"$country_instance\", backup_job_id!=\"\"}",
+          "instant": true, "format": "table", "legendFormat": "Last Success Timestamp"
+        },
+        {
+          "refId": "Duration",
+          "expr": "backup_duration_seconds{country=\"$country_instance\", backup_job_id!=\"\"}",
+          "instant": true, "format": "table", "legendFormat": "Duration"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "custom": {"align": "auto", "displayMode": "auto"}
+        },
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "backup_job_id"}, "properties": [{"id": "displayName", "value": "Backup Job ID"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "Status"},
+            "properties": [
+              {"id": "displayName", "value": "Last Status"},
+              {"id": "mappings", "value": [
+                  {"type": "value", "options": {"0": {"text": "Success", "color": "green"}, "1": {"text": "Failed", "color": "red"}}}
+              ]}
+          ]},
+          {"matcher": {"id": "byFrameRefID", "options": "Timestamp"},
+            "properties": [
+              {"id": "displayName", "value": "Last Success"},
+              {"id": "unit", "value": "datetime"},
+              {"id": "custom.dateFormat", "value": "YYYY-MM-DD HH:mm:ss"}
+          ]},
+          {"matcher": {"id": "byFrameRefID", "options": "Duration"},
+            "properties": [
+              {"id": "displayName", "value": "Last Duration"},
+              {"id": "unit", "value": "s"}
+          ]}
+        ]
+      },
+      "options": {"sortBy": [{"displayName": "Last Success", "sort": "desc"}]},
+      "pluginVersion": "9.5.1",
+      "transformations": [
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {}, "indexByName": {}, "renameByName": {
+          "Value #Status": "Last Status",
+          "Value #Timestamp": "Last Success Timestamp",
+          "Value #Duration": "Last Duration"
+        }}}
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["dfr", "backup", "operations", "status"],
+  "templating": {
+    "list": [
+      {
+        "current": {"selected": false, "text": "CKI", "value": "CKI"},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Country Instance",
+        "multi": false,
+        "name": "country_instance",
+        "options": [],
+        "query": "label_values(backup_last_status, country)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {"selected": false, "text": "All", "value": "$__all"},
+        "hide": 0,
+        "includeAll": true,
+        "label": "Backup Job ID",
+        "multi": true,
+        "name": "backup_job_id",
+        "options": [],
+        "query": "label_values(backup_last_status{country=\"$country_instance\"}, backup_job_id)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DFR Backup Operations Status - $country_instance",
+  "uid": "dfr_backup_ops_status_dashboard",
+  "version": 1,
+  "weekStart": ""
+}

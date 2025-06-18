@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Top-level Menu for DFR -->
+    <menuitem id="menu_dfr_root"
+              name="DFR Farmer Registry"
+              sequence="10"
+              web_icon="dfr_farmer_registry,static/description/icon.png"
+              groups="dfr_rbac_config.group_dfr_enumerator,dfr_rbac_config.group_dfr_supervisor,dfr_rbac_config.group_dfr_national_admin"/>
+
+    <!-- Sub-menus under DFR Farmer Registry -->
+    <menuitem id="menu_dfr_farmers_main"
+              name="Farmers"
+              parent="menu_dfr_root"
+              action="action_dfr_farmer_list"
+              sequence="10"/>
+
+    <menuitem id="menu_dfr_households_main"
+              name="Households"
+              parent="menu_dfr_root"
+              action="action_dfr_household_list"
+              sequence="20"/>
+
+    <menuitem id="menu_dfr_farms_main"
+              name="Farms"
+              parent="menu_dfr_root"
+              action="action_dfr_farm_list"
+              sequence="30"/>
+
+    <menuitem id="menu_dfr_plots_main"
+              name="Plots"
+              parent="menu_dfr_root"
+              action="action_dfr_plot_list"
+              sequence="40"/>
+
+    <!-- Configuration Menu -->
+     <menuitem id="menu_dfr_configuration"
+               name="Configuration"
+               parent="menu_dfr_root"
+               sequence="100"
+               groups="dfr_rbac_config.group_dfr_national_admin"/>
+
+    <!-- Items under Configuration -->
+     <!-- Actions for supporting models will be defined here or in their respective view files -->
+     <record id="action_dfr_national_id_type_list" model="ir.actions.act_window">
+        <field name="name">National ID Types</field>
+        <field name="res_model">dfr.national.id.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Define a new National ID Type.
+            </p><p>
+                Manage the types of national identification documents recognized by the system (e.g., National ID Card, Passport).
+            </p>
+        </field>
+     </record>
+     <menuitem id="menu_dfr_config_national_id_types"
+               name="National ID Types"
+               parent="menu_dfr_configuration"
+               action="action_dfr_national_id_type_list"
+               sequence="10"/>
+
+     <record id="action_dfr_consent_purpose_list" model="ir.actions.act_window">
+        <field name="name">Consent Purposes</field>
+        <field name="res_model">dfr.consent.purpose</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Define a new Consent Purpose.
+            </p><p>
+                Manage the different purposes for which farmer consent can be obtained (e.g., Data Sharing for Research, Program Participation).
+            </p>
+        </field>
+     </record>
+     <menuitem id="menu_dfr_config_consent_purposes"
+               name="Consent Purposes"
+               parent="menu_dfr_configuration"
+               action="action_dfr_consent_purpose_list"
+               sequence="20"/>
+
+    <record id="action_dfr_education_level_list" model="ir.actions.act_window">
+        <field name="name">Education Levels</field>
+        <field name="res_model">dfr.education.level</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_dfr_config_education_levels"
+              name="Education Levels"
+              parent="menu_dfr_configuration"
+              action="action_dfr_education_level_list"
+              sequence="30"/>
+
+    <record id="action_dfr_relationship_type_list" model="ir.actions.act_window">
+        <field name="name">Relationship Types</field>
+        <field name="res_model">dfr.relationship.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_dfr_config_relationship_types"
+              name="Relationship Types"
+              parent="menu_dfr_configuration"
+              action="action_dfr_relationship_type_list"
+              sequence="40"/>
+
+    <record id="action_dfr_land_tenure_type_list" model="ir.actions.act_window">
+        <field name="name">Land Tenure Types</field>
+        <field name="res_model">dfr.land.tenure.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_dfr_config_land_tenure_types"
+              name="Land Tenure Types"
+              parent="menu_dfr_configuration"
+              action="action_dfr_land_tenure_type_list"
+              sequence="50"/>
+
+    <record id="action_dfr_crop_livestock_type_list" model="ir.actions.act_window">
+        <field name="name">Crop/Livestock Types</field>
+        <field name="res_model">dfr.crop.livestock.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_dfr_config_crop_livestock_types"
+              name="Crop/Livestock Types"
+              parent="menu_dfr_configuration"
+              action="action_dfr_crop_livestock_type_list"
+              sequence="60"/>
+
+    <!-- Note: Administrative Area menu is expected to be in dfr_common_core or a dedicated geo module -->
+
+</odoo>

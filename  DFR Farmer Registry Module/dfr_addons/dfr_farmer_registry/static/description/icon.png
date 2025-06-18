@@ -1,0 +1,4 @@
+This is a placeholder for the binary PNG image file icon.png.
+Actual image data cannot be represented in this text format.
+The icon should be a PNG image, typically 90x90 or 128x128 pixels,
+and placed in the dfr_addons/dfr_farmer_registry/static/description/ directory.

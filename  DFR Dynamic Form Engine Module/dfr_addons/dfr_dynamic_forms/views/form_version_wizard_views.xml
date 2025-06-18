@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="dfr_form_version_wizard_view_form" model="ir.ui.view">
+        <field name="name">dfr.form.version.wizard.form</field>
+        <field name="model">dfr.form.version.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create New Form Version">
+                <group>
+                    <field name="form_master_id" readonly="1" options="{'no_open': True}"/>
+                    <field name="source_version_id"
+                           options="{'no_create': True, 'no_create_edit': True}"
+                           placeholder="Leave empty to create a blank version"/>
+                    <field name="new_version_description"
+                           placeholder="e.g., Added new field for crop variety, updated validation rules for age."/>
+                </group>
+                <footer>
+                    <button name="action_create_version" string="Create Version" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dfr_form_version_wizard" model="ir.actions.act_window">
+        <field name="name">Create New Form Version</field>
+        <field name="res_model">dfr.form.version.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field> <!-- Open in a modal dialog -->
+        <field name="context">{'default_form_master_id': active_id}</field>
+    </record>
+</odoo>

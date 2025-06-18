@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- DFR Farm Views -->
+
+    <!-- Tree View -->
+    <record id="dfr_farm_tree" model="ir.ui.view">
+        <field name="name">dfr.farm.tree</field>
+        <field name="model">dfr.farm</field>
+        <field name="arch" type="xml">
+            <tree string="Farms">
+                <field name="name"/>
+                <field name="farmer_id"/>
+                <field name="household_id"/>
+                <field name="administrative_area_id"/>
+                <field name="total_area" sum="Total Area"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="dfr_farm_form" model="ir.ui.view">
+        <field name="name">dfr.farm.form</field>
+        <field name="model">dfr.farm</field>
+        <field name="arch" type="xml">
+            <form string="Farm">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="Farm Name/Identifier"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="farmer_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="household_id" options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="administrative_area_id" options="{'no_create': True}"/>
+                            <field name="total_area" readonly="1" force_save="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Plots" name="plots">
+                             <field name="plot_ids" context="{'default_farm_id': active_id}">
+                                  <tree editable="bottom">
+                                       <field name="name"/>
+                                       <field name="size"/>
+                                       <field name="size_unit_id" options="{'no_create': True}"/>
+                                       <field name="administrative_area_id" options="{'no_create': True}"/>
+                                       <field name="primary_crop_livestock_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                  </tree>
+                             </field>
+                         </page>
+                    </notebook>
+                </sheet>
+                 <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="dfr_farm_search" model="ir.ui.view">
+        <field name="name">dfr.farm.search</field>
+        <field name="model">dfr.farm</field>
+        <field name="arch" type="xml">
+            <search string="Search Farm">
+                <field name="name"/>
+                <field name="farmer_id"/>
+                <field name="household_id"/>
+                <field name="administrative_area_id"/>
+                 <group expand="0" string="Group By">
+                     <filter string="Managing Farmer" name="groupby_farmer_id" context="{'group_by': 'farmer_id'}"/>
+                     <filter string="Associated Household" name="groupby_household_id" context="{'group_by': 'household_id'}"/>
+                     <filter string="Administrative Area" name="groupby_administrative_area_id" context="{'group_by': 'administrative_area_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_dfr_farm_list" model="ir.actions.act_window">
+        <field name="name">Farms</field>
+        <field name="res_model">dfr.farm</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="dfr_farm_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new farm record.
+            </p><p>
+                Manage agricultural farm units linked to farmers or households, including their plots and total area.
+            </p>
+        </field>
+    </record>
+
+</odoo>

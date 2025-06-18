@@ -1,0 +1,101 @@
+<odoo>
+    <data>
+        <!-- 
+            Main Portal Layout
+            Inherits from website.layout to provide a consistent base.
+            Includes placeholders for country-specific branding and main content.
+            Implements WCAG 2.1 AA considerations for semantic structure.
+            REQ-FSSP-001, REQ-FSSP-013
+        -->
+        <template id="portal_layout" inherit_id="website.layout" name="DFR Portal Layout">
+            <!-- Add country specific logo placeholder before the main navigation -->
+            <xpath expr="//header//nav[hasclass('navbar')]" position="before">
+                <div class="container dfr-portal-header-branding">
+                    <div class="row">
+                        <div class="col-12 text-center my-3">
+                             <t t-call="dfr_farmer_portal.s_country_logo_placeholder"/>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- Add role="main" to the main content wrapper for accessibility -->
+            <xpath expr="//main" position="attributes">
+                <attribute name="role">main</attribute>
+                <attribute name="class" add="dfr-portal-main-wrapper" separator=" "/>
+            </xpath>
+
+            <!-- Replace the default main content structure to insert our placeholder -->
+            <!-- We keep website.navbar_alternate or similar for navigation if desired -->
+            <xpath expr="//div[@id='wrapwrap']/main" position="replace">
+                <main role="main" class="dfr-portal-main-content container mt-4 mb-4">
+                    <!-- You can include a specific portal navbar here if needed, or rely on website.navbar -->
+                    <!-- For simplicity, using Odoo's alternate navbar structure or assuming it's part of website.layout -->
+                    <!-- <t t-call="website.navbar_alternate"/> -->
+                    
+                    <div id="dfr_portal_wrap" class="oe_structure oe_empty">
+                        <t t-call-block="main_content_placeholder"/>
+                    </div>
+                </main>
+            </xpath>
+
+            <!-- Add role="contentinfo" to the footer for accessibility -->
+            <xpath expr="//footer" position="attributes">
+                <attribute name="role">contentinfo</attribute>
+                <attribute name="class" add="dfr-portal-footer" separator=" "/>
+            </xpath>
+
+            <!-- Add DFR specific footer content -->
+             <xpath expr="//footer//div[hasclass('container')]" position="inside">
+                <div class="row mt-3 pt-3 border-top">
+                    <div class="col-12 text-center">
+                        <p class="text-muted small">
+                            <t t-esc="_('Powered by DFR Platform')"/>
+                        </p>
+                        <!-- Add more footer links or information as needed -->
+                        <!-- Example: Accessibility Statement Link -->
+                        <!-- <p class="text-muted small">
+                            <a href="/accessibility-statement" t-esc="_('Accessibility Statement')"/>
+                        </p> -->
+                    </div>
+                </div>
+            </xpath>
+        </template>
+
+        <!-- 
+            Main Content Placeholder Block
+            This block will be replaced by the actual content of specific portal pages
+            (e.g., pre-registration form, dynamic form, info page).
+        -->
+        <template id="main_content_placeholder" name="Main Content Placeholder">
+            <!-- This content is a fallback and should be overridden by child templates -->
+            <div class="container">
+                <div class="alert alert-info" role="alert">
+                    <t t-esc="_('Content is loading or not yet defined for this section.')"/>
+                </div>
+            </div>
+        </template>
+
+        <!-- 
+            Generic Error Page Template
+            Used by the controller to display user-friendly error messages.
+        -->
+        <template id="portal_error_template" name="Portal Error Page">
+            <t t-call="dfr_farmer_portal.portal_layout">
+                <t t-set="additional_body_classes" t-value="'dfr-error-page'"/>
+                <div class="container mt-5">
+                    <div class="alert alert-danger" role="alert">
+                        <h4 class="alert-heading"><t t-esc="_('Error')"/></h4>
+                        <p t-if="error_message" t-esc="error_message"/>
+                        <p t-else=""><t t-esc="_('An unexpected error occurred. Please try again later or contact support.')"/></p>
+                        <hr/>
+                        <p class="mb-0">
+                            <a href="/" class="btn btn-primary"><i class="fa fa-home"></i> <t t-esc="_('Go to Homepage')"/></a>
+                        </p>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+    </data>
+</odoo>

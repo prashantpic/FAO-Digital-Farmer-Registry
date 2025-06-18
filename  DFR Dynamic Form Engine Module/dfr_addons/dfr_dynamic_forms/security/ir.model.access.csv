@@ -1,0 +1,29 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dfr_form_national_admin,dfr.form national_admin,model_dfr_form,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_form_version_national_admin,dfr.form.version national_admin,model_dfr_form_version,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_form_field_national_admin,dfr.form.field national_admin,model_dfr_form_field,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_form_submission_national_admin,dfr.form.submission national_admin,model_dfr_form_submission,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_form_response_national_admin,dfr.form.response national_admin,model_dfr_form_response,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+access_dfr_form_selection_option_answer_national_admin,dfr.form.selection.option.answer national_admin,model_dfr_form_selection_option_answer,dfr_rbac_config.group_dfr_national_admin,1,1,1,1
+
+access_dfr_form_supervisor,dfr.form supervisor,model_dfr_form,dfr_rbac_config.group_dfr_supervisor,1,0,0,0
+access_dfr_form_version_supervisor,dfr.form.version supervisor,model_dfr_form_version,dfr_rbac_config.group_dfr_supervisor,1,0,0,0
+access_dfr_form_field_supervisor,dfr.form.field supervisor,model_dfr_form_field,dfr_rbac_config.group_dfr_supervisor,1,0,0,0
+access_dfr_form_submission_supervisor,dfr.form.submission supervisor,model_dfr_form_submission,dfr_rbac_config.group_dfr_supervisor,1,1,0,0
+access_dfr_form_response_supervisor,dfr.form.response supervisor,model_dfr_form_response,dfr_rbac_config.group_dfr_supervisor,1,0,0,0
+access_dfr_form_selection_option_answer_supervisor,dfr.form.selection.option.answer supervisor,model_dfr_form_selection_option_answer,dfr_rbac_config.group_dfr_supervisor,1,0,0,0
+
+access_dfr_form_enumerator,dfr.form enumerator,model_dfr_form,dfr_rbac_config.group_dfr_enumerator,1,0,0,0
+access_dfr_form_version_enumerator,dfr.form.version enumerator,model_dfr_form_version,dfr_rbac_config.group_dfr_enumerator,1,0,0,0
+access_dfr_form_field_enumerator,dfr.form.field enumerator,model_dfr_form_field,dfr_rbac_config.group_dfr_enumerator,1,0,0,0
+access_dfr_form_submission_enumerator,dfr.form.submission enumerator,model_dfr_form_submission,dfr_rbac_config.group_dfr_enumerator,1,0,1,0
+access_dfr_form_response_enumerator,dfr.form.response enumerator,model_dfr_form_response,dfr_rbac_config.group_dfr_enumerator,1,0,1,0
+access_dfr_form_selection_option_answer_enumerator,dfr.form.selection.option.answer enumerator,model_dfr_form_selection_option_answer,dfr_rbac_config.group_dfr_enumerator,1,0,1,0
+
+# Base user access (e.g. employee) for basic read if needed - usually not for this specific model type
+# access_dfr_form_user,dfr.form user,model_dfr_form,base.group_user,1,0,0,0
+# access_dfr_form_version_user,dfr.form.version user,model_dfr_form_version,base.group_user,1,0,0,0
+# access_dfr_form_field_user,dfr.form.field user,model_dfr_form_field,base.group_user,1,0,0,0
+# access_dfr_form_submission_user,dfr.form.submission user,model_dfr_form_submission,base.group_user,1,0,0,0
+# access_dfr_form_response_user,dfr.form.response user,model_dfr_form_response,base.group_user,1,0,0,0
+# access_dfr_form_selection_option_answer_user,dfr.form.selection.option.answer user,model_dfr_form_selection_option_answer,base.group_user,1,0,0,0

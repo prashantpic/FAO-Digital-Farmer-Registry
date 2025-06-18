@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Client Action for the Dashboard -->
+        <record id="dfr_analytics_dashboard_action" model="ir.actions.client">
+            <field name="name">DFR Analytics Dashboard</field>
+            <field name="tag">dfr_analytics.DashboardManager</field>
+            <!-- Add context or params if needed by DashboardManager OWL component -->
+            <!-- Example context:
+            <field name="context" eval="{'default_some_filter': True}"/>
+            -->
+        </record>
+
+        <!-- Main Menu Item -->
+        <menuitem id="menu_dfr_analytics_root"
+                  name="DFR Analytics"
+                  sequence="150"
+                  web_icon="dfr_analytics,static/description/icon.png"/>
+                  <!-- Ensure icon.png exists in dfr_analytics/static/description/ -->
+
+        <!-- Dashboard Menu Item -->
+        <menuitem id="menu_dfr_analytics_dashboard"
+                  name="Dashboard"
+                  parent="menu_dfr_analytics_root"
+                  action="dfr_analytics_dashboard_action"
+                  sequence="10"/>
+
+    </data>
+</odoo>

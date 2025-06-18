@@ -1,0 +1,185 @@
+version: '3.8'
+
+# This file typically extends environments/common/docker-compose.common.yml
+# Ensure common networks and any default service configurations are defined there.
+# Example command:
+# docker-compose -f ../common/docker-compose.common.yml -f docker-compose.yml --env-file .env.production up -d
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE_NAME}:${POSTGRES_IMAGE_TAG} # e.g., dfr_postgres_db:16-alpine-v1.0.prod or official postgres:16-alpine
+    container_name: dfr_postgres_prod
+    volumes:
+      - dfr_postgres_data_prod:/var/lib/postgresql/data
+      # Init scripts should be baked into the custom image for production.
+    environment:
+      - POSTGRES_USER=${DFR_DB_USER}
+      - POSTGRES_PASSWORD=${DFR_DB_PASSWORD} # Loaded from .env.production (SECRET - managed via secrets manager)
+      - POSTGRES_DB=${DFR_DB_NAME}
+      # Consider setting PGDATA explicitly if non-standard, though default is usually fine.
+      # - PGDATA=/var/lib/postgresql/data/pgdata
+      # Production specific PostgreSQL settings can be passed as command args or via a custom postgresql.conf mounted
+      # command: postgres -c max_connections=200 -c shared_buffers=1GB # Example
+    ports:
+      # CRITICAL: DO NOT expose PostgreSQL ports directly to the public internet in production.
+      # Access should be restricted to the internal Docker network.
+      # If external access is absolutely required (e.g., for managed DB tools),
+      # use strict firewall rules, VPNs, or SSH tunneling, and bind to localhost if possible.
+      # Example for highly restricted access: "127.0.0.1:5432:5432"
+    networks:
+      - dfr_internal_network # From common or defined below
+    restart: always # Use 'always' or 'unless-stopped' for production services
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 15s # Longer interval for prod
+      timeout: 10s
+      retries: 6
+      start_period: 60s # Give more time for startup in prod
+    logging: # Configure production logging driver
+      driver: "${LOGGING_DRIVER:-json-file}" # e.g., "json-file", "syslog", "journald", "gelf", "awslogs"
+      options:
+        max-size: "${LOGGING_MAX_SIZE:-200m}"
+        max-file: "${LOGGING_MAX_FILE:-5}"
+        # Add driver-specific options, e.g., for gelf:
+        # gelf-address: "udp://your-log-aggregator:12201"
+    deploy: # Define resource limits and reservations for production
+      resources:
+        limits:
+          cpus: '${POSTGRES_CPU_LIMIT_PROD:-2.0}' # Adjust based on instance size and load
+          memory: '${POSTGRES_MEM_LIMIT_PROD:-8G}'
+        reservations:
+          cpus: '${POSTGRES_CPU_RESERVATION_PROD:-1.0}'
+          memory: '${POSTGRES_MEM_RESERVATION_PROD:-4G}'
+
+  odoo:
+    image: ${ODOO_IMAGE_NAME}:${ODOO_IMAGE_TAG} # e.g., dfr_odoo_app:production-v1.2.3
+    container_name: dfr_odoo_prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Addons are part of the image. Only filestore data is mounted.
+      - dfr_odoo_data_prod:/var/lib/odoo
+    environment:
+      - ODOO_DB_HOST=postgres
+      - ODOO_DB_PORT=5432
+      - ODOO_DB_USER=${DFR_DB_USER}
+      - ODOO_DB_PASSWORD=${DFR_DB_PASSWORD} # Loaded from .env.production (SECRET)
+      - ODOO_DB_NAME=${DFR_DB_NAME}
+      - ODOO_ADMIN_PASSWD=${ODOO_MASTER_PASSWORD} # Loaded from .env.production (SECRET)
+      - ODOO_LOAD_DEMO_DATA=false # CRITICAL: Never load demo data in production
+      - ODOO_WORKERS=${ODOO_WORKERS_PROD:-4} # Adjust based on expected load and CPU cores
+      - ODOO_LOG_LEVEL=${ODOO_LOG_LEVEL_PROD:-warn} # Use 'warn' or 'error' for production
+      - ODOO_PROXY_MODE=True
+      - ODOO_LIST_DB=False # CRITICAL: Must be False in production
+      - ODOO_LIMIT_TIME_CPU=${ODOO_LIMIT_TIME_CPU_PROD:-600}
+      - ODOO_LIMIT_TIME_REAL=${ODOO_LIMIT_TIME_REAL_PROD:-1200}
+      - ODOO_LIMIT_MEMORY_HARD=${ODOO_LIMIT_MEMORY_HARD_PROD:-2147483648} # e.g. 2GB per worker process
+      - ODOO_LIMIT_MEMORY_SOFT=${ODOO_LIMIT_MEMORY_SOFT_PROD:-1610612736} # e.g. 1.5GB
+      # - ODOO_AUTO_INIT_DB=false # Database init/update is a deliberate, controlled process in prod
+      # - ODOO_AUTO_UPDATE_MODULES=false
+    ports:
+      # Odoo ports are not exposed directly on the host in production.
+      # Nginx handles all external access.
+    networks:
+      - dfr_internal_network
+    restart: always
+    logging:
+      driver: "${LOGGING_DRIVER:-json-file}"
+      options:
+        max-size: "${LOGGING_MAX_SIZE:-200m}"
+        max-file: "${LOGGING_MAX_FILE:-5}"
+        # tag: "dfr.odoo.{{.Name}}" # Example for log aggregation
+    deploy:
+      resources:
+        limits:
+          cpus: '${ODOO_CPU_LIMIT_PROD:-4.0}'
+          memory: '${ODOO_MEM_LIMIT_PROD:-16G}' # Total memory for Odoo service
+        reservations:
+          cpus: '${ODOO_CPU_RESERVATION_PROD:-2.0}'
+          memory: '${ODOO_MEM_RESERVATION_PROD:-8G}'
+
+  nginx:
+    image: ${NGINX_IMAGE_NAME}:${NGINX_IMAGE_TAG} # e.g., dfr_nginx_proxy:production-v1.1.0
+    container_name: dfr_nginx_prod
+    depends_on:
+      - odoo
+    ports:
+      # Expose standard HTTP/HTTPS ports to the host or load balancer.
+      - "${NGINX_HTTP_PORT_PROD:-80}:80"
+      - "${NGINX_HTTPS_PORT_PROD:-443}:443"
+    volumes:
+      # SSL certificates and keys must be securely provisioned on the host (e.g., by Certbot)
+      # and mounted read-only into the Nginx container.
+      - ${SSL_CERT_PATH_PROD}:/etc/nginx/ssl/${SSL_CERTIFICATE_FILE_PROD}:ro
+      - ${SSL_KEY_PATH_PROD}:/etc/nginx/ssl/${SSL_CERTIFICATE_KEY_FILE_PROD}:ro
+      # Optional: Mount custom DH params file (generate strong DH params)
+      # - ${SSL_DHPARAM_PATH_PROD}:/etc/nginx/ssl/dhparam.pem:ro
+      # Nginx configuration templates should be part of the image; entrypoint substitutes vars.
+    environment:
+      # Variables for nginx_entrypoint.sh
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME_PROD} # e.g., dfr.example.country
+      - ODOO_APP_SERVICE_HOST=odoo
+      - ODOO_APP_SERVICE_PORT=8069
+      - ODOO_LONGPOLLING_PORT=8072
+      - SSL_CERTIFICATE_FILE=${SSL_CERTIFICATE_FILE_PROD} # e.g., fullchain.pem
+      - SSL_CERTIFICATE_KEY_FILE=${SSL_CERTIFICATE_KEY_FILE_PROD} # e.g., privkey.pem
+      # Variables for main nginx.conf.template
+      - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES_PROD:-auto} # 'auto' usually best
+      - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS_PROD:-4096} # Adjust based on ulimit
+      # Variables for dfr.conf.template
+      - NGINX_PROXY_READ_TIMEOUT=${NGINX_PROXY_READ_TIMEOUT_PROD:-720s}
+      - NGINX_PROXY_CONNECT_TIMEOUT=${NGINX_PROXY_CONNECT_TIMEOUT_PROD:-300s}
+      - NGINX_PROXY_SEND_TIMEOUT=${NGINX_PROXY_SEND_TIMEOUT_PROD:-300s}
+    networks:
+      - dfr_internal_network
+    restart: always
+    logging:
+      driver: "${LOGGING_DRIVER:-json-file}"
+      options:
+        max-size: "${LOGGING_MAX_SIZE:-100m}"
+        max-file: "${LOGGING_MAX_FILE:-3}"
+        # tag: "dfr.nginx.{{.Name}}"
+    deploy:
+      resources:
+        limits:
+          cpus: '${NGINX_CPU_LIMIT_PROD:-1.0}'
+          memory: '${NGINX_MEM_LIMIT_PROD:-512M}'
+        reservations:
+          cpus: '${NGINX_CPU_RESERVATION_PROD:-0.5}'
+          memory: '${NGINX_MEM_RESERVATION_PROD:-256M}'
+
+volumes:
+  dfr_postgres_data_prod:
+    # For production, it's CRITICAL to use robust, backed-up storage.
+    # This might be a Docker managed volume on high-availability storage,
+    # or a host path that maps to such storage (e.g., SAN, EBS, Azure Disk).
+    # Ensure regular backups of this volume are performed at the infrastructure level
+    # in addition to pg_dump backups.
+    driver: local # Or a more robust driver for production.
+    # Example for host path (ensure path exists and has correct permissions for Docker user/postgres user in container):
+    # driver: local
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /var/dfr_data/production/postgres
+  dfr_odoo_data_prod:
+    driver: local
+    # Example for host path:
+    # driver: local
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /var/dfr_data/production/odoo_filestore
+
+networks:
+  dfr_internal_network:
+    # Ensure this network is defined, possibly in environments/common/docker-compose.common.yml
+    # If defined in common as external:
+    # name: dfr_internal_network
+    # external: true
+    # If defined locally for this environment:
+    driver: bridge
+    name: dfr_prod_internal_network # Use a unique name for production network
+    # Consider enabling Docker Swarm mode for production for easier management and scaling.
+    # If using Swarm, network and volume definitions might change.

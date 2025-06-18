@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bulk_data_import_wizard_form" model="ir.ui.view">
+        <field name="name">bulk.data.import.wizard.form</field>
+        <field name="model">bulk.data.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bulk Data Import">
+                <group>
+                    <group>
+                        <field name="job_name"/>
+                        <field name="file_upload" widget="binary" filename="file_name" required="1"/>
+                        <field name="file_name" invisible="1"/>
+                        <field name="target_model_id" required="1" options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <group>
+                        <field name="skip_header_row"/>
+                        <field name="create_if_not_exist"/>
+                        <field name="update_existing"/>
+                    </group>
+                </group>
+                <group string="Field Mapping Guidance" attrs="{'invisible': [('target_model_id', '=', False)]}">
+                     <field name="field_mapping_info" nolabel="1" class="oe_grey" readonly="1"/>
+                </group>
+                 <group string="Import Job Status" attrs="{'invisible': [('job_id', '=', False)]}">
+                    <field name="job_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                    <div class="mt16 mb16">
+                        <widget name="import_progress_widget" job_id="job_id"/>
+                    </div>
+                </group>
+                <footer>
+                    <button name="action_start_import" string="Start Import" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="z" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bulk_data_import_wizard_launch" model="ir.actions.act_window">
+        <field name="name">Bulk Data Import</field>
+        <field name="res_model">bulk.data.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

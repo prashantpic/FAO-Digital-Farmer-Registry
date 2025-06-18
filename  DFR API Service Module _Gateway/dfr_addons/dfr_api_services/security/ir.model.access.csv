@@ -1,0 +1,6 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+# access_dfr_api_client_config_user,dfr.api.client.config.user,model_dfr_api_client_config,base.group_user,1,0,0,0
+# access_dfr_api_client_config_admin,dfr.api.client.config.admin,model_dfr_api_client_config,base.group_system,1,1,1,1
+# (Above are examples if a model dfr.api.client.config for storing API client credentials/settings were defined in this module)
+# If no models are defined here, this file might only contain access rights for ir.config_parameter if specific groups need to manage them.
+# However, ir.config_parameter is usually managed by base.group_system.

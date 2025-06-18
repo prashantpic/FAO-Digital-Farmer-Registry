@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="dfr_common_config_settings_view_form" model="ir.ui.view">
+            <field name="name">dfr.common.config.settings.view.form</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/> <!-- Inherit base settings view -->
+            <field name="arch" type="xml">
+                <xpath expr="//div[hasclass('settings')]" position="inside">
+                    <div class="app_settings_block" data-string="DFR Common Core" string="DFR Common Core" data-key="dfr_common" groups="base.group_system">
+                        <h2>DFR Common Platform Settings</h2>
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <!-- Example Boolean Setting -->
+                                    <field name="dfr_common_example_setting"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="dfr_common_example_setting" string="Enable DFR Common Example Feature"/>
+                                    <div class="text-muted">
+                                        Enable or disable the DFR common example feature.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="dfr_common_codebase_governance_url" string="Codebase Governance Document URL"/>
+                                    <div class="text-muted">
+                                        Provide the URL to the official DFR Codebase Governance Framework document.
+                                    </div>
+                                    <div class="content-group">
+                                        <div class="mt16">
+                                            <field name="dfr_common_codebase_governance_url" class="oe_input" placeholder="e.g., https://example.com/dfr_governance.pdf"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <h2>DFR Platform Information</h2>
+                         <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <span class="o_form_label">DFR Platform License</span>
+                                    <div class="text-muted">
+                                        The DFR platform is distributed under the following open-source license:
+                                    </div>
+                                    <div class="content-group">
+                                        <div class="mt16">
+                                            <field name="dfr_common_platform_license" readonly="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                 <div class="o_setting_left_pane"/>
+                                 <div class="o_setting_right_pane">
+                                    <span class="o_form_label">DFR DPI Principles</span>
+                                    <div class="text-muted">
+                                        The DFR platform adheres to the following Digital Public Infrastructure (DPI) principles:
+                                    </div>
+                                    <div class="content-group">
+                                        <div class="mt16">
+                                            <!-- This field uses HTML, so needs to be rendered carefully -->
+                                            <field name="dfr_common_dpi_principles_info" widget="html" readonly="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Action to open DFR Common settings -->
+        <record id="dfr_common_config_settings_action" model="ir.actions.act_window">
+            <field name="name">DFR Common Settings</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">res.config.settings</field>
+            <field name="view_mode">form</field>
+            <field name="target">inline</field>
+            <field name="context">{'module' : 'dfr_common', 'bin_size': False}</field>
+        </record>
+
+        <!-- Menu item for DFR Common settings -->
+        <!-- This could be under a main "DFR" settings menu if one is created by another module -->
+        <menuitem id="menu_dfr_common_settings"
+                  name="DFR Common"
+                  parent="base.menu_administration" <!-- Or a more specific DFR parent menu -->
+                  sequence="50"
+                  action="dfr_common_config_settings_action"
+                  groups="base.group_system"/>
+    </data>
+</odoo>

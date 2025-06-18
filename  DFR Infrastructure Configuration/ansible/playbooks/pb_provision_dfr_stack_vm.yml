@@ -1,0 +1,131 @@
+---
+# Main Ansible playbook for provisioning a DFR stack on pre-existing VMs.
+# This playbook applies roles for OS hardening, Docker installation,
+# deployment of Odoo, PostgreSQL (if not using RDS), and Nginx containers,
+# and configures the reverse proxy.
+
+# Usage:
+# ansible-playbook -i inventories/your_inventory.ini playbooks/pb_provision_dfr_stack_vm.yml --extra-vars "deploy_managed_db_service_flag=true terraform_rds_endpoint=your_rds_endpoint.amazonaws.com"
+
+- name: Provision Common OS Base and Docker
+  hosts: all # Targets all hosts defined in the inventory for common setup
+  become: true
+  roles:
+    - role: common
+      tags: ['common', 'os_setup']
+    - role: docker
+      tags: ['docker', 'container_runtime']
+  vars_files:
+    - "{{ inventory_dir }}/../group_vars/all.yml" # Example global vars
+    - "{{ inventory_dir }}/../group_vars/{{ group_names[0] }}.yml" # Example group-specific vars
+    - "{{ inventory_dir }}/../host_vars/{{ inventory_hostname }}.yml" # Example host-specific vars
+    # - "{{ inventory_dir }}/../vault.yml" # Placeholder for Ansible Vault encrypted variables
+
+- name: Provision PostgreSQL Database Server (if on VM)
+  hosts: postgres_db_servers # This group should exist in your inventory if deploying PostgreSQL on a VM
+  become: true
+  # deploy_managed_db_service_flag should be passed as an extra-var or defined in inventory.
+  # Defaults to true (meaning RDS is used and this play is skipped). Set to false to run this play.
+  when: not (deploy_managed_db_service_flag | default(true) | bool)
+  roles:
+    - role: postgres_db_config
+      tags: ['postgres', 'database']
+  vars_files:
+    - "{{ inventory_dir }}/../group_vars/postgres_db_servers.yml" # Vars specific to postgres_db_servers
+    - "{{ inventory_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+    # - "{{ inventory_dir }}/../vault.yml"
+  vars:
+    # Variables for postgres_db_config role can be defined here,
+    # in group_vars/postgres_db_servers.yml, or in the role's vars/main.yml
+    # Example:
+    # postgres_user: "{{ vault_postgres_user | default('odoo_user_default') }}"
+    # postgres_password: "{{ vault_postgres_password | default('odoo_pass_default') }}"
+    # postgres_db: "{{ vault_postgres_db | default('odoodb_default') }}"
+    # postgres_data_path: "/opt/pgdata_dfr"
+    # postgres_image_name: "postgres"
+    # postgres_image_tag: "15-alpine" # As per SDS
+    noop: null # Placeholder if no specific vars needed here directly
+
+- name: Provision Odoo Application Servers
+  hosts: odoo_app_servers # This group should exist in your inventory
+  become: true
+  roles:
+    - role: odoo_app_config
+      tags: ['odoo', 'application']
+  vars_files:
+    - "{{ inventory_dir }}/../group_vars/odoo_app_servers.yml" # Vars specific to odoo_app_servers
+    - "{{ inventory_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+    # - "{{ inventory_dir }}/../vault.yml"
+  vars:
+    # Conditional DB host based on whether RDS is used or PostgreSQL is on a VM.
+    # 'terraform_rds_endpoint' should be passed as an extra-var if RDS is used.
+    # 'groups['postgres_db_servers'][0]' assumes at least one PostgreSQL server if not using RDS.
+    # Ensure 'postgres_db_servers' group is correctly populated and accessible.
+    odoo_db_host_computed: >-
+      {{
+        terraform_rds_endpoint
+        if (deploy_managed_db_service_flag | default(true) | bool)
+        else (
+          hostvars[groups['postgres_db_servers'][0]]['ansible_default_ipv4']['address']
+          if groups['postgres_db_servers'] | length > 0
+          else 'localhost'
+        )
+      }}
+    # Odoo Env Vars would be defined here or in odoo_app_config role vars/main.yml or group_vars
+    # Example:
+    # odoo_env_vars:
+    #   HOST: "{{ odoo_db_host_computed }}"
+    #   PORT: "5432"
+    #   USER: "{{ odoo_db_user | default('odoo') }}" # Fetched from vault or defined elsewhere
+    #   PASSWORD: "{{ odoo_db_password | default('longGFpassword') }}" # Fetched from vault
+    #   ADMIN_PASSWD: "{{ odoo_admin_password | default('superadminpassword') }}" # Fetched from vault
+    #   ODOO_RC: |
+    #     [options]
+    #     http_port = 8069
+    #     longpolling_port = 8072
+    #     limit_request = 8192
+    #     limit_memory_soft = 671088640
+    #     limit_memory_hard = 805306368
+    #     limit_time_cpu = 600
+    #     limit_time_real = 1200
+    #     db_name = "{{ odoo_db_name | default('odoodb') }}"
+    #     proxy_mode = True
+    #     # Add other odoo.conf options as needed
+    #
+    # odoo_image_name: "your-ecr-repo/dfr-odoo" # As per SDS, this should be parameterized
+    # odoo_image_tag: "latest" # As per SDS, this should be parameterized
+    # odoo_filestore_path: "/opt/odoo_filestore_dfr"
+    # odoo_custom_addons_path: "/opt/odoo_custom_addons_dfr"
+    noop: null # Placeholder
+
+- name: Provision Nginx Reverse Proxy Servers
+  hosts: nginx_servers # This group should exist in your inventory
+  become: true
+  roles:
+    - role: nginx
+      tags: ['nginx', 'reverse_proxy']
+  vars_files:
+    - "{{ inventory_dir }}/../group_vars/nginx_servers.yml" # Vars specific to nginx_servers
+    - "{{ inventory_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+    # - "{{ inventory_dir }}/../vault.yml"
+  vars:
+    # This assumes a simple setup with one Odoo app server or a load balancer VIP for Odoo app servers.
+    # For multiple Odoo servers, you might need a more complex upstream configuration or use a load balancer IP.
+    # 'groups['odoo_app_servers'][0]' assumes at least one Odoo server.
+    odoo_app_upstream_host_computed: >-
+      {{
+        hostvars[groups['odoo_app_servers'][0]]['ansible_default_ipv4']['address']
+        if groups['odoo_app_servers'] | length > 0
+        else 'localhost'
+      }}
+    # Nginx role variables can be defined here, or in nginx role vars/main.yml or group_vars
+    # Example:
+    # server_domain_name: "dfr.example.com" # Should be parameterized per environment
+    # odoo_app_upstream_port: 8069
+    # odoo_longpolling_port: 8072
+    # ssl_certificate_path_on_host: "/etc/letsencrypt/live/{{ server_domain_name }}/fullchain.pem" # Example for Let's Encrypt
+    # ssl_certificate_key_path_on_host: "/etc/letsencrypt/live/{{ server_domain_name }}/privkey.pem" # Example for Let's Encrypt
+    # use_lets_encrypt: true # Set to false if providing certs manually
+    # nginx_image_name: "nginx" # If using Nginx in Docker
+    # nginx_image_tag: "latest" # If using Nginx in Docker
+    noop: null # Placeholder

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dfr_audit_log_group_system,dfr.audit.log.system,model_dfr_audit_log,base.group_system,1,0,1,0
+access_dfr_audit_log_group_user,dfr.audit.log.user,model_dfr_audit_log,base.group_user,0,0,1,0
+access_dfr_audit_log_group_dfr_nat_admin,dfr.audit.log.nat_admin,model_dfr_audit_log,dfr_rbac_config.group_dfr_national_administrator,1,0,0,0
+access_dfr_audit_log_group_dfr_super_admin,dfr.audit.log.super_admin,model_dfr_audit_log,dfr_rbac_config.group_dfr_super_administrator,1,0,0,0

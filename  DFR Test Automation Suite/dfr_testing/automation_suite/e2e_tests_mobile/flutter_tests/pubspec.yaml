@@ -1,0 +1,25 @@
+name: dfr_flutter_e2e_tests
+description: E2E tests for DFR Flutter mobile application using flutter_driver.
+publish_to: 'none' # Prevent accidental publishing to pub.dev
+
+environment:
+  sdk: '>=3.0.0 <4.0.0' # Match DFR_MOBILE_APP's Flutter SDK constraint
+  flutter: ">=3.22.0"   # Match DFR_MOBILE_APP's Flutter version stated in SDS for consistency
+
+dev_dependencies:
+  flutter_driver:
+    sdk: flutter
+  test: any # Standard Dart test package, `any` allows it to pick a compatible version.
+            # Or pin to a specific version range, e.g. ^1.24.0
+
+  # The flutter_test dependency is typically for widget or unit tests within the main app's /test directory.
+  # For a standalone flutter_driver test package in /e2e_tests_mobile/flutter_tests,
+  # it's often not directly needed unless helper utilities from flutter_test are used.
+  # flutter_test:
+  #   sdk: flutter
+
+# The flutter section is usually not needed for a pure test package like this,
+# unless it defines assets or fonts that are specifically used by the test drivers themselves,
+# which is uncommon for flutter_driver tests.
+# flutter:
+#   uses-material-design: true

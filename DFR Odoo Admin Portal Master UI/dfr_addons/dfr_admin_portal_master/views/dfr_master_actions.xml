@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Action for the DFR Master Dashboard View (Optional) -->
+        <record id="action_dfr_master_dashboard_view" model="ir.actions.act_window">
+            <field name="name">DFR Overview Dashboard</field>
+            <field name="res_model">ir.ui.view</field> <!-- Placeholder if no specific model, or a custom transient model -->
+            <field name="view_mode">dashboard</field> <!-- Or form, tree, kanban as appropriate -->
+            <field name="view_id" ref="view_dfr_master_dashboard_form"/> <!-- Reference the dashboard view -->
+            <!-- <field name="target">main</field> -->
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Welcome to the DFR Overview Dashboard!
+                </p><p>
+                    This dashboard provides a high-level summary of the Digital Farmer Registry.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,211 @@
+<odoo>
+    <data noupdate="1">
+
+        <!-- Server Action: Perform Data Quality Audit -->
+        <record id="action_server_perform_data_quality_audit" model="ir.actions.server">
+            <field name="name">Server Action: Perform Data Quality Audit</field>
+            <field name="model_id" ref="base.model_res_partner"/> <!-- Placeholder model, can be any model or ir.actions.server itself -->
+            <field name="state">code</field>
+            <field name="code">
+# Log start of audit
+env['workflow.log'].log_event(
+    workflow_name='Data Quality Audit',
+    message="Scheduled data quality audit started.",
+    level='info'
+)
+
+# Example Check 1: Farmers missing critical data (e.g., phone number)
+# This assumes 'dfr.farmer' model and 'phone' field
+farmers_missing_phone = env['dfr.farmer'].search_count([('phone', '=', False), ('status', '=', 'active')])
+if farmers_missing_phone > 0:
+    message = f"Data Quality Check: Found {farmers_missing_phone} active farmers missing phone number."
+    env['workflow.log'].log_event(
+        workflow_name='Data Quality Audit',
+        message=message,
+        level='warning' # Or 'error' depending on severity
+    )
+    # Optionally create an activity for an admin to review
+    # admin_user_id = env.ref('base.user_admin').id
+    # env['mail.activity'].create({
+    #     'activity_type_id': env.ref('mail.mail_activity_data_todo').id,
+    #     'summary': 'Data Quality: Farmers missing phone numbers',
+    #     'note': message + ' Please review and update.',
+    #     'res_model_id': env['ir.model']._get('dfr.farmer').id, # Generic, not tied to a specific record
+    #     'user_id': admin_user_id 
+    # })
+
+# Example Check 2: Plots with invalid GPS (e.g., latitude/longitude out of expected country bounds)
+# This is highly dependent on how GPS is stored and what constitutes "invalid"
+# plots_invalid_gps = env['dfr.plot'].search_count([
+#    '|', '|', ('latitude', '=', False), ('longitude', '=', False), 
+#    '|', ('latitude', '&lt;', MIN_LAT), ('latitude', '&gt;', MAX_LAT), # Define MIN/MAX_LAT/LON
+#    '|', ('longitude', '&lt;', MIN_LON), ('longitude', '&gt;', MAX_LON)
+# ])
+# if plots_invalid_gps > 0:
+#    message = f"Data Quality Check: Found {plots_invalid_gps} plots with potentially invalid GPS coordinates."
+#    env['workflow.log'].log_event(
+#        workflow_name='Data Quality Audit', message=message, level='warning'
+#    )
+
+env['workflow.log'].log_event(
+    workflow_name='Data Quality Audit',
+    message="Scheduled data quality audit completed.",
+    level='info'
+)
+            </field>
+        </record>
+
+        <!-- Scheduled Action: Weekly Data Quality Checks -->
+        <record id="cron_perform_data_quality_audit" model="ir.cron">
+            <field name="name">DFR: Weekly Data Quality Audit</field>
+            <field name="model_id" ref="base.model_res_partner"/> <!-- Can be any model for ir.cron if action is model-agnostic -->
+            <field name="state">code</field>
+            <field name="code">model.env['ir.actions.server'].browse(ref('action_server_perform_data_quality_audit')).run()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+            <field name="active" eval="True"/> <!-- Set to False by default, admin can enable -->
+        </record>
+
+
+        <!-- Server Action: Alert for Stale 'Pending Verification' Records -->
+        <record id="action_server_alert_stale_pending_verifications" model="ir.actions.server">
+            <field name="name">Server Action: Alert Stale Pending Verifications</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+from datetime import datetime, timedelta
+
+# Get threshold from config
+threshold_days_str = env['orchestration.rule.config'].get_config_value(
+    'data_quality', 
+    'stale_pending_verification_days',
+    default_value='7' # Default to 7 days if not configured
+)
+try:
+    threshold_days = int(threshold_days_str)
+except ValueError:
+    threshold_days = 7
+    env['workflow.log'].log_event(
+        workflow_name='Stale Records Alert',
+        message=f"Invalid threshold '{threshold_days_str}' for stale pending verifications. Using default {threshold_days} days.",
+        level='warning'
+    )
+
+cutoff_date = datetime.now() - timedelta(days=threshold_days)
+# Odoo stores datetimes in UTC. Ensure comparison is consistent.
+# create_date is usually a datetime field.
+stale_records = env['dfr.farmer'].search([
+    ('status', '=', 'pending_verification'),
+    ('create_date', '&lt;=', cutoff_date.strftime('%Y-%m-%d %H:%M:%S'))
+])
+
+if stale_records:
+    message = f"Found {len(stale_records)} 'Pending Verification' farmer records older than {threshold_days} days (created before {cutoff_date.date()}): IDs {stale_records.ids}"
+    env['workflow.log'].log_event(
+        workflow_name='Stale Records Alert',
+        message=message,
+        level='warning'
+    )
+    
+    # Notify relevant administrators/supervisors
+    # This could be via an activity, email, or internal Odoo notification
+    # Example: Create a single activity for an admin group or specific admin user
+    admin_user_id = env.ref('base.user_admin').id # Default to admin
+    supervisor_group_id_str = env['orchestration.rule.config'].get_config_value(
+        'data_quality',
+        'stale_records_notification_group_id'
+    )
+    target_user_ids = []
+    if supervisor_group_id_str:
+        try:
+            group_id = int(supervisor_group_id_str)
+            group = env['res.groups'].browse(group_id)
+            if group.exists():
+                target_user_ids = group.users.ids
+        except ValueError:
+            env['workflow.log'].log_event(
+                workflow_name='Stale Records Alert',
+                message=f"Invalid group ID '{supervisor_group_id_str}' for stale records notification.",
+                level='warning'
+            )
+    
+    if not target_user_ids: # Fallback to admin if no group or group empty
+        target_user_ids = [admin_user_id]
+
+    # For simplicity, create one activity per target user or a summary for one user/group.
+    # Here, assign to the first user in target_user_ids for simplicity in example.
+    # A better approach might be to post to a channel or create activities for multiple users.
+    if target_user_ids:
+        activity_type_id = env.ref('mail.mail_activity_data_todo').id
+        # Using a placeholder model like res.company for a general system alert not tied to a specific farmer
+        res_model_id_company = env['ir.model']._get('res.company').id
+        company_id = env.company.id
+
+        env['mail.activity'].create({
+            'activity_type_id': activity_type_id,
+            'summary': f'Alert: Stale "Pending Verification" Farmer Records ({len(stale_records)})',
+            'note': message + "\nPlease review these records and take appropriate action (verify, reject, or follow up).",
+            'res_id': company_id, 
+            'res_model_id': res_model_id_company,
+            'user_id': target_user_ids[0] # Assign to first user in list
+        })
+        env['workflow.log'].log_event(
+            workflow_name='Stale Records Alert',
+            message=f"Activity created for user ID {target_user_ids[0]} regarding stale pending verifications.",
+            level='info'
+        )
+else:
+    env['workflow.log'].log_event(
+        workflow_name='Stale Records Alert',
+        message="No stale 'Pending Verification' records found.",
+        level='info'
+    )
+            </field>
+        </record>
+
+        <!-- Scheduled Action: Daily Check for Stale 'Pending Verification' Records -->
+        <record id="cron_alert_stale_pending_verifications" model="ir.cron">
+            <field name="name">DFR: Daily Alert for Stale Pending Verifications</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">model.env['ir.actions.server'].browse(ref('action_server_alert_stale_pending_verifications')).run()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+            <field name="active" eval="True"/> <!-- Set to False by default -->
+        </record>
+
+        <!-- Placeholder for De-duplication Resolution Follow-up -->
+        <!-- This would depend on how dfr_farmer_registry flags duplicates and creates tasks.
+             For example, if it creates a 'deduplication.task' model:
+        <record id="action_server_follow_up_deduplication_tasks" model="ir.actions.server">
+            <field name="name">Server Action: Follow-up De-duplication Tasks</field>
+            <field name="model_id" ref="your_deduplication_task_module.model_deduplication_task"/>
+            <field name="state">code</field>
+            <field name="code">
+# Search for open deduplication tasks older than X days (e.g., 3 days)
+# from datetime import datetime, timedelta
+# cutoff_date = datetime.now() - timedelta(days=3)
+# old_tasks = env['deduplication.task'].search([
+#     ('state', 'in', ['open', 'pending']), 
+#     ('create_date', '&lt;=', cutoff_date.strftime('%Y-%m-%d %H:%M:%S'))
+# ])
+# for task in old_tasks:
+#    # Send reminder notification to task.assigned_user_id
+#    # Log event
+#    pass
+            </field>
+        </record>
+        <record id="cron_follow_up_deduplication_tasks" model="ir.cron">
+            <field name="name">DFR: Daily Follow-up on De-duplication Tasks</field>
+            ...
+        </record>
+        -->
+
+    </data>
+</odoo>

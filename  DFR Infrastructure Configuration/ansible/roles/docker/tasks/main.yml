@@ -1,0 +1,112 @@
+---
+- name: Update apt cache (Debian/Ubuntu)
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  become: true
+
+- name: Install prerequisites for Docker (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - software-properties-common # for add-apt-repository
+    state: present
+  when: ansible_os_family == "Debian"
+  become: true
+
+- name: Add Docker GPG key (Debian/Ubuntu)
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+    state: present
+  when: ansible_os_family == "Debian"
+  become: true
+
+- name: Add Docker repository (Debian/Ubuntu)
+  ansible.builtin.apt_repository:
+    repo: "deb [arch={{ ansible_architecture | replace('x86_64','amd64') | replace('aarch64', 'arm64') }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+    state: present
+    filename: docker
+  when: ansible_os_family == "Debian"
+  become: true
+
+# Add tasks for RHEL/CentOS family if needed
+- name: Install prerequisites for Docker (RHEL/CentOS)
+  ansible.builtin.yum:
+    name:
+      - yum-utils
+    state: present
+  when: ansible_os_family == "RedHat"
+  become: true
+
+- name: Add Docker repository (RHEL/CentOS)
+  ansible.builtin.command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+    creates: /etc/yum.repos.d/docker-ce.repo
+  when: ansible_os_family == "RedHat"
+  become: true
+
+
+- name: Install Docker Engine
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin # Latest way to get docker compose
+  become: true
+  notify: Restart Docker Service # Handler to restart docker if needed
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: yes
+  become: true
+
+- name: Check if Docker Compose (standalone) is installed via plugin
+  ansible.builtin.stat:
+    path: /usr/libexec/docker/cli-plugins/docker-compose # Common path for plugin
+  register: docker_compose_plugin_stat
+  ignore_errors: true
+
+- name: Check if Docker Compose (standalone binary) is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/docker-compose
+  register: docker_compose_standalone_stat
+  ignore_errors: true
+
+- name: Download Docker Compose (if not installed via plugin or already present)
+  ansible.builtin.get_url:
+    url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}" # Specify version
+    dest: /usr/local/bin/docker-compose
+    mode: '0755'
+  when: not docker_compose_plugin_stat.stat.exists and not docker_compose_standalone_stat.stat.exists
+  become: true
+
+- name: Add remote_user to docker group (optional)
+  ansible.builtin.user:
+    name: "{{ ansible_user | default(ansible_env.USER, true) | default(ansible_env.USERNAME, true) }}"
+    groups: docker
+    append: yes
+  become: true
+  when: add_user_to_docker_group | default(false) # Variable to control this behavior
+  notify: User Docker Group Change # Handler might suggest logout/login
+
+# Example handler (in roles/docker/handlers/main.yml)
+# - name: Restart Docker Service
+#   ansible.builtin.service:
+#     name: docker
+#     state: restarted
+#   become: true
+#
+# - name: User Docker Group Change
+#   ansible.builtin.debug:
+#     msg: "User {{ ansible_user }} added to docker group. A logout/login or new shell session may be required for changes to take effect."

@@ -1,0 +1,36 @@
+erDiagram
+    Farmer {
+        UUID id PK
+        timestamp deletedAt
+    }
+    Household {
+        UUID id PK
+        timestamp deletedAt
+    }
+    HouseholdMember {
+        UUID id PK
+        UUID householdId FK "Household"
+        UUID farmerId FK "Farmer"
+    }
+    Farm {
+        UUID id PK
+        UUID farmerId FK "Farmer"
+        UUID householdId FK "Household"
+        timestamp deletedAt
+    }
+    Plot {
+        UUID id PK
+        UUID farmId FK "Farm"
+        timestamp deletedAt
+    }
+    AdministrativeArea {
+        UUID id PK
+        UUID parentId FK "AdministrativeArea"
+    }
+
+    Household ||--|{ HouseholdMember : "has member"
+    Farmer ||--o{ HouseholdMember : "is member"
+    Farmer ||--o{ Farm : "manages/owns"
+    Household ||--o{ Farm : "associated with"
+    Farm ||--|{ Plot : "has plot"
+    AdministrativeArea ||--o{ AdministrativeArea : "parent"

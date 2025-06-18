@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- dfr.notification.template Tree View -->
+        <record id="view_dfr_notification_template_tree" model="ir.ui.view">
+            <field name="name">dfr.notification.template.tree</field>
+            <field name="model">dfr.notification.template</field>
+            <field name="arch" type="xml">
+                <tree string="Notification Templates">
+                    <field name="name"/>
+                    <field name="technical_name"/>
+                    <field name="channel_type"/>
+                    <field name="model_id"/>
+                    <field name="lang"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- dfr.notification.template Form View -->
+        <record id="view_dfr_notification_template_form" model="ir.ui.view">
+            <field name="name">dfr.notification.template.form</field>
+            <field name="model">dfr.notification.template</field>
+            <field name="arch" type="xml">
+                <form string="Notification Template">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="name" class="oe_edit_only"/>
+                            <h1><field name="name" placeholder="e.g. Farmer Registration Welcome Email"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="technical_name" required="1"/>
+                                <field name="channel_type" required="1"/>
+                                <field name="model_id" required="1" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="model_name" readonly="1" force_save="1"/>
+                            </group>
+                            <group>
+                                <field name="lang" placeholder="e.g. en_US"/>
+                                <field name="gateway_config_id" options="{'no_create': True, 'no_open': True}"
+                                       domain="[('active', '=', True), ('channel_type', '=', channel_type)]"/>
+                                <field name="active" widget="boolean_toggle"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Content">
+                                <group>
+                                     <field name="subject_template" placeholder="QWeb/Jinja2 template for subject (e.g. Welcome {{ object.name }})"/>
+                                </group>
+                                <field name="body_template_qweb" widget="html" required="1" placeholder="QWeb/Jinja2 template for body..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- dfr.notification.template Search View -->
+        <record id="view_dfr_notification_template_search" model="ir.ui.view">
+            <field name="name">dfr.notification.template.search</field>
+            <field name="model">dfr.notification.template</field>
+            <field name="arch" type="xml">
+                <search string="Search Notification Templates">
+                    <field name="name"/>
+                    <field name="technical_name"/>
+                    <field name="channel_type"/>
+                    <field name="model_id"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                    <separator/>
+                    <filter string="Email" name="channel_email" domain="[('channel_type', '=', 'email')]"/>
+                    <filter string="SMS" name="channel_sms" domain="[('channel_type', '=', 'sms')]"/>
+                    <filter string="Push" name="channel_push" domain="[('channel_type', '=', 'push')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Channel Type" name="group_by_channel_type" context="{'group_by': 'channel_type'}"/>
+                        <filter string="Model" name="group_by_model" context="{'group_by': 'model_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- dfr.notification.template Action Window -->
+        <record id="action_dfr_notification_template" model="ir.actions.act_window">
+            <field name="name">Notification Templates</field>
+            <field name="res_model">dfr.notification.template</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_dfr_notification_template_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a new notification template.
+                </p><p>
+                    Notification templates are used to send standardized messages
+                    via different channels like email, SMS, or push notifications.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

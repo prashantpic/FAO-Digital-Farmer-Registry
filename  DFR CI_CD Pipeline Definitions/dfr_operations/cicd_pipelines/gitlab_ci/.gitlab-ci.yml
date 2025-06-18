@@ -1,0 +1,217 @@
+stages:
+  - validate
+  - test
+  - build
+  - scan
+  - deploy_staging
+  - deploy_production
+
+variables:
+  # Global Variables
+  DOCKER_IMAGE_NAME_ODOO_BASE: "$CI_REGISTRY_IMAGE/dfr-odoo-backend"
+  DOCKER_IMAGE_NAME_MOBILE_BASE: "$CI_REGISTRY_IMAGE/dfr-mobile-app" # Conceptual
+  ODOO_MODULES_PATH: "dfr_addons" # Adjust if your Odoo modules are elsewhere
+  # SonarQube/SonarCloud Variables (set these in GitLab CI/CD settings -> Variables)
+  # SONAR_HOST_URL: "https://sonarcloud.io"
+  # SONAR_TOKEN: "your_sonar_token_for_gitlab" (Protected, Masked)
+  # SONAR_PROJECT_KEY_ODOO: "dfr_odoo_backend_gitlab"
+  # SONAR_PROJECT_KEY_MOBILE: "dfr_mobile_app_gitlab"
+
+  # Feature Toggles (can be set in GitLab CI/CD settings -> Variables)
+  ENABLE_SAST_SCANS: "true"
+  ENABLE_DAST_SCANS: "true"
+  AUTO_DEPLOY_STAGING_ODOO: "true" # For Odoo develop branch
+  AUTO_DEPLOY_STAGING_MOBILE: "true" # For Mobile develop branch
+
+include:
+  - local: '/dfr_operations/cicd_pipelines/gitlab_ci/templates/odoo_jobs.yml'
+  - local: '/dfr_operations/cicd_pipelines/gitlab_ci/templates/mobile_jobs.yml' # Assumes this file will be created
+  - local: '/dfr_operations/cicd_pipelines/gitlab_ci/templates/common_jobs.yml' # Assumes this file will be created
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/' # Matches semantic version tags like v1.0.0
+
+# --- Odoo Backend Pipeline Jobs ---
+
+lint_odoo_code:
+  extends: .odoo_lint_template
+  stage: validate
+
+unit_test_odoo:
+  extends: .odoo_unit_test_template
+  stage: test
+
+integration_test_odoo:
+  extends: .odoo_integration_test_template
+  stage: test
+
+sast_scan_odoo:
+  extends: .sast_sonar_odoo_template
+  stage: scan
+  variables:
+    SONAR_PROJECT_KEY: $SONAR_PROJECT_KEY_ODOO
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+      when: on_success
+      allow_failure: true # Decide if SAST failure should block pipeline
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: on_success
+      allow_failure: true
+
+build_odoo_docker:
+  extends: .build_odoo_docker_template
+  stage: build
+  variables:
+    DOCKER_IMAGE_NAME: $DOCKER_IMAGE_NAME_ODOO_BASE
+    DOCKERFILE_PATH: "./Dockerfile" # Assuming Dockerfile at project root for Odoo
+    BUILD_CONTEXT: "."
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+
+# dast_scan_odoo: # Requires a deployed instance
+#   extends: .dast_zap_odoo_template
+#   stage: scan
+#   needs: [deploy_odoo_staging] # Depends on staging deployment
+#   variables:
+#     ZAP_TARGET_URL: $STAGING_ODOO_APP_URL # This variable must be set by deploy_odoo_staging or globally
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "develop" && $ENABLE_DAST_SCANS == "true"'
+#       when: on_success
+
+deploy_odoo_staging:
+  extends: .deploy_application_template
+  stage: deploy_staging
+  environment:
+    name: staging/odoo-backend
+    url: $STAGING_ODOO_APP_URL # Define STAGING_ODOO_APP_URL in GitLab Variables
+  variables:
+    DEPLOYMENT_ENV: staging
+    APP_NAME: dfr-odoo-backend
+    IMAGE_TAG_OR_ARTIFACT_PATH: "$DOCKER_IMAGE_NAME_ODOO_BASE:${CI_COMMIT_SHA}"
+    CONFIG_FILE_PATH: "dfr_deployment_scripts/odoo/staging/docker-compose.yml" # Example path
+    DEPLOYMENT_TYPE: "docker-compose" # or "kubernetes"
+    # KUBE_CONTEXT, AWS_PROFILE etc. should be configured as GitLab CI/CD variables if needed by deploy script
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" && $AUTO_DEPLOY_STAGING_ODOO == "true"'
+      when: on_success
+  needs: [build_odoo_docker] # Ensure image is built first
+
+deploy_odoo_production:
+  extends: .deploy_application_template
+  stage: deploy_production
+  environment:
+    name: production/odoo-backend
+    url: $PRODUCTION_ODOO_APP_URL # Define PRODUCTION_ODOO_APP_URL in GitLab Variables
+  variables:
+    DEPLOYMENT_ENV: production
+    APP_NAME: dfr-odoo-backend
+    IMAGE_TAG_OR_ARTIFACT_PATH: "$DOCKER_IMAGE_NAME_ODOO_BASE:${CI_COMMIT_TAG}"
+    CONFIG_FILE_PATH: "dfr_deployment_scripts/odoo/production/docker-compose.yml" # Example path
+    DEPLOYMENT_TYPE: "docker-compose" # or "kubernetes"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+      when: manual # Manual trigger for production deployment from tags
+  needs: [deploy_odoo_staging] # Or directly from build if staging is optional/different flow
+
+tag_odoo_release:
+  extends: .tag_git_release_template
+  stage: deploy_production # Or a dedicated release stage
+  variables:
+    VERSION: $CI_COMMIT_TAG # Assumes this job runs on a tag
+    TAG_MESSAGE: "Odoo Backend Release $CI_COMMIT_TAG"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && $CI_JOB_STAGE == "deploy_production"' # Ensure it's part of production deployment flow triggered by a tag
+      when: on_success # Run after successful production deployment
+  needs: [deploy_odoo_production]
+
+
+# --- Mobile App Pipeline Jobs (Conceptual Stubs) ---
+
+lint_mobile_app:
+  extends: .mobile_lint_template # From mobile_jobs.yml
+  stage: validate
+
+unit_test_mobile_app:
+  extends: .mobile_unit_test_template # From mobile_jobs.yml
+  stage: test
+
+integration_test_mobile_app:
+  extends: .mobile_integration_test_template # From mobile_jobs.yml
+  stage: test
+
+# sast_scan_mobile: # Example, if you have a Sonar project for mobile
+#   extends: .sast_sonar_odoo_template # Can reuse if generic enough, or make .sast_sonar_mobile_template
+#   stage: scan
+#   variables:
+#     SONAR_PROJECT_KEY: $SONAR_PROJECT_KEY_MOBILE # Specific project key for mobile
+#     # SOURCES_PATH: "./app" # Adjust path to mobile sources
+#   rules:
+#     - if: '($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop") && $ENABLE_SAST_SCANS == "true"'
+#       when: on_success
+#       allow_failure: true
+
+build_mobile_app_artifact:
+  extends: .build_mobile_apk_aab_template # From mobile_jobs.yml
+  stage: build
+  variables:
+    # Variables for versioning, signing keys (as GitLab CI/CD variables)
+    # ANDROID_KEYSTORE_PASSWORD: $ANDROID_KEYSTORE_PASSWORD_VAR
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+
+# security_scan_mobile_artifact: # MobSF or similar
+#   extends: .sast_mobfs_mobile_template # From mobile_jobs.yml
+#   stage: scan
+#   needs: [build_mobile_app_artifact]
+#   rules:
+#     - if: '($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop") && $ENABLE_DAST_SCANS == "true"' # Using DAST as general security scan flag
+#       when: on_success
+
+deploy_mobile_test_track:
+  extends: .deploy_mobile_test_track_template # From mobile_jobs.yml
+  stage: deploy_staging
+  environment:
+    name: staging/mobile-app/test-track
+    # url: Link to Google Play test track
+  variables:
+    # GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: $GPLAY_SVC_ACC_JSON_VAR (GitLab variable)
+    # PACKAGE_NAME: "com.example.dfr"
+    # TRACK: "internal"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" && $AUTO_DEPLOY_STAGING_MOBILE == "true"'
+      when: on_success
+  needs: [build_mobile_app_artifact]
+
+deploy_mobile_production_store:
+  extends: .deploy_application_template # Conceptual generic deployment or specific mobile store template
+  stage: deploy_production
+  environment:
+    name: production/mobile-app/store
+    # url: Link to Google Play production store
+  variables:
+    DEPLOYMENT_ENV: production
+    APP_NAME: dfr-mobile-app-distribution
+    # IMAGE_TAG_OR_ARTIFACT_PATH: # Path to AAB from build_mobile_app_artifact job (use dependencies)
+    # DEPLOYMENT_TYPE: "app-store-deploy"
+    # GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: $GPLAY_SVC_ACC_JSON_VAR
+    # PACKAGE_NAME: "com.example.dfr"
+    # TRACK: "production"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+      when: manual
+  needs: [deploy_mobile_test_track] # Or build_mobile_app_artifact if test track is optional
+
+tag_mobile_release:
+  extends: .tag_git_release_template
+  stage: deploy_production
+  variables:
+    VERSION: $CI_COMMIT_TAG
+    TAG_MESSAGE: "Mobile App Release $CI_COMMIT_TAG"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && $CI_JOB_STAGE == "deploy_production"'
+      when: on_success
+  needs: [deploy_mobile_production_store]

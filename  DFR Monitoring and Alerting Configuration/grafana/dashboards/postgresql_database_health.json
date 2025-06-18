@@ -1,0 +1,221 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_DFR-PROMETHEUS",
+      "label": "DFR-Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "8.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Connections by State",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pg_stat_activity_count{datname!~\"template.*|postgres\", job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}) by (state)",
+          "legendFormat": "{{state}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "bar", "lineInterpolation": "linear", "barAlignment": 0, "lineWidth": 1, "fillOpacity": 80, "gradientMode": "none", "spanNulls": false, "showPoints": "auto", "pointSize": 5, "stacking": {"mode": "normal", "group": "A"}, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": {"type": "linear"}, "axisCenteredZero": false, "hideFrom": {"tooltip": false, "viz": false, "legend": false}},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Transactions per Second (TPS)",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(pg_stat_database_xact_commit{datname!~\"template.*|postgres\", job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}[5m]) + rate(pg_stat_database_xact_rollback{datname!~\"template.*|postgres\", job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}[5m])) by (datname)",
+          "legendFormat": "{{datname}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "linear", "barAlignment": 0, "lineWidth": 1, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false, "showPoints": "auto", "pointSize": 5, "stacking": {"mode": "none", "group": "A"}, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": {"type": "linear"}, "axisCenteredZero": false, "hideFrom": {"tooltip": false, "viz": false, "legend": false}},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Index Hit Rate",
+      "gridPos": {"h": 9, "w": 8, "x": 0, "y": 9},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pg_statio_user_indexes_idx_blks_hit{datname!~\"template.*|postgres\", job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}) by (datname) / (sum(pg_statio_user_indexes_idx_blks_hit{datname!~\"template.*|postgres\", job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}) by (datname) + sum(pg_statio_user_indexes_idx_blks_read{datname!~\"template.*|postgres\", job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}) by (datname)) * 100",
+          "legendFormat": "{{datname}} Index Hit Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": {"mode": "thresholds"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "linear", "barAlignment": 0, "lineWidth": 1, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false, "showPoints": "auto", "pointSize": 5, "stacking": {"mode": "none", "group": "A"}, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": {"type": "linear"}, "axisCenteredZero": false, "hideFrom": {"tooltip": false, "viz": false, "legend": false}},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "orange", "value": 95}, {"color": "green", "value": 99}]}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Replication Lag",
+      "gridPos": {"h": 9, "w": 8, "x": 8, "y": 9},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "pg_replication_lag{job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}",
+          "legendFormat": "Replication Lag {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {"mode": "thresholds"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "linear", "barAlignment": 0, "lineWidth": 1, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false, "showPoints": "auto", "pointSize": 5, "stacking": {"mode": "none", "group": "A"}, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": {"type": "linear"}, "axisCenteredZero": false, "hideFrom": {"tooltip": false, "viz": false, "legend": false}},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 60}, {"color": "red", "value": 300}]}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Slow Queries Count (Placeholder)",
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 9},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(pg_slow_queries_total{job=\"dfr_postgres_db\", country=\"$country_instance\", instance=\"$pg_instance\"}[5m])",
+          "legendFormat": "Slow Queries {{instance}}"
+        }
+      ],
+      "description": "Placeholder: Assumes a metric `pg_slow_queries_total` is available from the exporter.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}}
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["dfr", "postgresql", "database", "health"],
+  "templating": {
+    "list": [
+      {
+        "current": {"selected": false, "text": "CKI", "value": "CKI"},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Country Instance",
+        "multi": false,
+        "name": "country_instance",
+        "options": [],
+        "query": "label_values(pg_stat_activity_count, country)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {"selected": false, "text": "All", "value": "$__all"},
+        "hide": 0,
+        "includeAll": true,
+        "label": "PostgreSQL Instance",
+        "multi": true,
+        "name": "pg_instance",
+        "options": [],
+        "query": "label_values(pg_stat_activity_count{country=\"$country_instance\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DFR PostgreSQL Health - $country_instance",
+  "uid": "dfr_postgres_health_dashboard",
+  "version": 1,
+  "weekStart": ""
+}

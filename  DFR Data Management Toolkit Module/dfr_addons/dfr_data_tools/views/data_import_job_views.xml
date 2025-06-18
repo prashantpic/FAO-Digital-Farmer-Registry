@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_data_import_job_tree" model="ir.ui.view">
+        <field name="name">data.import.job.tree</field>
+        <field name="model">data.import.job</field>
+        <field name="arch" type="xml">
+            <tree string="Data Import Jobs" decoration-success="state=='done'" decoration-info="state=='in_progress'" decoration-danger="state=='error'" decoration-muted="state=='cancelled'">
+                <field name="name"/>
+                <field name="file_name"/>
+                <field name="target_model_name"/>
+                <field name="import_date"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="state"/>
+                <field name="total_records_in_file"/>
+                <field name="successful_records"/>
+                <field name="failed_records"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_data_import_job_form" model="ir.ui.view">
+        <field name="name">data.import.job.form</field>
+        <field name="model">data.import.job</field>
+        <field name="arch" type="xml">
+            <form string="Data Import Job">
+                <header>
+                     <button name="action_view_logs" type="object" string="View Detailed Logs" class="oe_highlight" attrs="{'invisible': [('log_ids', '=', [])]}"/>
+                    <!-- Add buttons for actions like re-process, cancel if implemented -->
+                    <!-- <button name="action_reprocess_failed" type="object" string="Reprocess Failed" attrs="{'invisible': [('state', '!=', 'error')]}"/> -->
+                    <!-- <button name="action_cancel_job" type="object" string="Cancel Job" attrs="{'invisible': [('state', 'not in', ['draft', 'in_progress'])]}"/> -->
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,done,error,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="file_name" readonly="1"/>
+                            <field name="target_model_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="target_model_name" readonly="1"/>
+                            <field name="import_date" readonly="1"/>
+                            <field name="user_id" readonly="1" widget="many2one_avatar_user"/>
+                            <field name="attachment_id" widget="binary" filename="file_name" string="Uploaded File" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_records_in_file" readonly="1"/>
+                            <field name="total_records_processed" readonly="1"/>
+                            <field name="successful_records" readonly="1"/>
+                            <field name="failed_records" readonly="1"/>
+                            <field name="create_if_not_exist" readonly="1"/>
+                            <field name="update_existing" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Import Logs" name="import_logs">
+                            <field name="log_ids" readonly="1">
+                                <tree editable="bottom" decoration-danger="log_type=='error'" decoration-warning="log_type=='warning'">
+                                    <field name="line_number"/>
+                                    <field name="record_identifier"/>
+                                    <field name="log_type"/>
+                                    <field name="log_message"/>
+                                    <field name="raw_row_data" optional="hide"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Log Summary" name="log_summary_page">
+                            <field name="log_summary" nolabel="1" readonly="1"/>
+                        </page>
+                         <page string="Field Mapping Used" name="field_mapping_page" attrs="{'invisible': [('field_mapping_info', '=', False)]}">
+                            <field name="field_mapping_info" nolabel="1" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_data_import_job_tree" model="ir.actions.act_window">
+        <field name="name">Data Import Job History</field>
+        <field name="res_model">data.import.job</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No data import jobs found.
+            </p><p>
+                Use the 'Bulk Data Import' menu to start importing data.
+            </p>
+        </field>
+    </record>
+</odoo>

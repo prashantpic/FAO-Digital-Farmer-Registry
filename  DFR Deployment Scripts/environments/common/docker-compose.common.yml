@@ -1,0 +1,20 @@
+version: '3.8'
+
+networks:
+  dfr_internal_network:
+    driver: bridge
+    name: dfr_internal_network # Explicitly name the network
+
+# Example of shared service defaults (optional, use if many services share common configs)
+# x-service-defaults: &service_defaults
+#   restart: unless-stopped
+#   logging:
+#     driver: "json-file"
+#     options:
+#       max-size: "10m"
+#       max-file: "3"
+
+# Common volumes that might be defined once and referenced (less common for actual data volumes)
+# volumes:
+#   shared_config:
+#     driver: local

@@ -1,0 +1,111 @@
+sequenceDiagram
+    title "Enumerator Collects Dynamic Form Data (Offline & Sync)"
+
+    actor "Mobile UI (Enumerator)" as dfrmobileapppresentation014
+    participant "Mobile App Logic" as dfrmobileappbusinesslogic015
+    participant "Mobile Local DB" as dfrmobileapplocaldatastore017
+    participant "Mobile Sync Service" as dfrmobileappdatasync016
+    participant "DFR API Service (Odoo)" as dfrmodulerestapi008
+    participant "DFR Dynamic Forms Module (Odoo)" as dfrmoduledynamicforms003
+    participant "DFR Farmer Registry Module (Odoo)" as dfrmodulefarmerregistry002
+
+    note over dfrmobileapppresentation014,dfrmodulefarmerregistry002: Enumerator is authenticated. Mobile app has initial farmer data or can register new farmers (covered in other sequences).
+    note over dfrmobileapppresentation014,dfrmodulefarmerregistry002: Assumes Dynamic Forms are published on the Odoo backend by an Administrator.
+
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 1. Initiate: Load Available Dynamic Forms
+    activate dfrmobileappbusinesslogic015
+
+    dfrmobileappbusinesslogic015-dfrmobileappdatasync016: 1.1. syncFormDefinitions()
+    activate dfrmobileappdatasync016
+    dfrmobileappdatasync016-dfrmodulerestapi008: 1.1.1. GET /api/dfr/v1/dynamic-forms/definitions
+    activate dfrmodulerestapi008
+    dfrmodulerestapi008-dfrmoduledynamicforms003: 1.1.1.1. fetchPublishedFormDefinitions()
+    activate dfrmoduledynamicforms003
+    dfrmoduledynamicforms003--dfrmodulerestapi008: [Form Definitions]
+    deactivate dfrmoduledynamicforms003
+    dfrmodulerestapi008--dfrmobileappdatasync016: HTTP 200 OK [Form Definitions]
+    deactivate dfrmodulerestapi008
+    dfrmobileappdatasync016-dfrmobileapplocaldatastore017: 1.1.2. storeFormDefinitions([Form Definitions])
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappdatasync016: Success
+    deactivate dfrmobileapplocaldatastore017
+    dfrmobileappdatasync016--dfrmobileappbusinesslogic015: 
+    deactivate dfrmobileappdatasync016
+
+    dfrmobileappbusinesslogic015-dfrmobileapplocaldatastore017: 1.2. getFormDefinitions()
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappbusinesslogic015: [Form Definitions]
+    deactivate dfrmobileapplocaldatastore017
+
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 2. Display Available Forms ([Form Definitions])
+    deactivate dfrmobileappbusinesslogic015
+
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 3. Select Farmer & Dynamic Form (farmerId, formId)
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015-dfrmobileapplocaldatastore017: 3.1. getFormDefinition(formId)
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappbusinesslogic015: FormDefinition (with fields, validation rules)
+    deactivate dfrmobileapplocaldatastore017
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 4. Render Form (FormDefinition)
+    deactivate dfrmobileappbusinesslogic015
+
+    loop 5. For each field input
+        dfrmobileapppresentation014-dfrmobileappbusinesslogic015: ValidateFieldInput(field, value)
+        activate dfrmobileappbusinesslogic015
+        dfrmobileappbusinesslogic015--dfrmobileapppresentation014: ValidationResult
+        deactivate dfrmobileappbusinesslogic015
+    end
+    note over dfrmobileapppresentation014: Offline form filling includes client-side validation based on synced form definition (REQ-3-002).
+
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 6. Submit Offline Form Data (farmerId, formId, formData)
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015-dfrmobileapplocaldatastore017: 6.1. saveFormSubmission(farmerId, formId, formData, status='PendingSync')
+    activate dfrmobileapplocaldatastore017
+    note right of dfrmobileapplocaldatastore017: Local storage uses SQLite with SQLCipher for encryption (REQ-4-004).
+    dfrmobileapplocaldatastore017--dfrmobileappbusinesslogic015: SubmissionSaved (localSubmissionId)
+    deactivate dfrmobileapplocaldatastore017
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 7. Notify: Submission Saved Locally
+    deactivate dfrmobileappbusinesslogic015
+
+    dfrmobileapppresentation014-dfrmobileappbusinesslogic015: 8. Initiate Data Synchronization
+    activate dfrmobileappbusinesslogic015
+    dfrmobileappbusinesslogic015-dfrmobileapplocaldatastore017: 8.1. getPendingFormSubmissions()
+    activate dfrmobileapplocaldatastore017
+    dfrmobileapplocaldatastore017--dfrmobileappbusinesslogic015: [Pending Submissions]
+    deactivate dfrmobileapplocaldatastore017
+
+    loop 8.2. For each Pending Submission
+        dfrmobileappbusinesslogic015-dfrmobileappdatasync016: syncFormSubmission(submissionData)
+        activate dfrmobileappdatasync016
+        note right of dfrmobileappdatasync016: Sync service handles network communication, retries, and potential batching of submissions.
+        dfrmobileappdatasync016-dfrmodulerestapi008: 8.2.1. POST /api/dfr/v1/form-submissions (submissionData)
+        activate dfrmodulerestapi008
+        dfrmodulerestapi008-dfrmoduledynamicforms003: 8.2.1.1. processFormSubmission(submissionData)
+        activate dfrmoduledynamicforms003
+        dfrmoduledynamicforms003-dfrmodulefarmerregistry002: 8.2.1.1.1. getFarmerRecord(farmerUid)
+        activate dfrmodulefarmerregistry002
+        dfrmodulefarmerregistry002--dfrmoduledynamicforms003: FarmerRecord
+        deactivate dfrmodulefarmerregistry002
+        dfrmoduledynamicforms003-dfrmoduledynamicforms003: 8.2.1.1.2. Self: Validate & Store Submission (link to Farmer)
+        note right of dfrmoduledynamicforms003: Odoo backend performs server-side validation. Submission is linked to farmeruid (REQ-3-008).
+        dfrmoduledynamicforms003--dfrmoduledynamicforms003: SubmissionProcessed (serverSubmissionId) OR ValidationError
+        dfrmoduledynamicforms003--dfrmodulerestapi008: 
+        deactivate dfrmoduledynamicforms003
+
+        alt 8.2.2 Success
+            dfrmodulerestapi008--dfrmobileappdatasync016: HTTP 201 Created { serverSubmissionId }
+        else 8.2.2 Failure
+            dfrmodulerestapi008--dfrmobileappdatasync016: HTTP 4xx/5xx { error }
+        end
+        deactivate dfrmodulerestapi008
+
+        dfrmobileappdatasync016-dfrmobileapplocaldatastore017: 8.2.2.1. updateSubmissionStatus(localSubmissionId, newStatus, serverId?, errorDetails?)
+        activate dfrmobileapplocaldatastore017
+        dfrmobileapplocaldatastore017--dfrmobileappdatasync016: StatusUpdated
+        deactivate dfrmobileapplocaldatastore017
+        dfrmobileappdatasync016--dfrmobileappbusinesslogic015: 
+        deactivate dfrmobileappdatasync016
+    end
+
+    dfrmobileappbusinesslogic015--dfrmobileapppresentation014: 9. Notify: Sync Completed (summary)
+    deactivate dfrmobileappbusinesslogic_015

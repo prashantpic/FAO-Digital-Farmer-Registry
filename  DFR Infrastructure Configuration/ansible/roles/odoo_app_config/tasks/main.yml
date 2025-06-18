@@ -1,0 +1,71 @@
+---
+- name: Create Odoo filestore directory
+  ansible.builtin.file:
+    path: "{{ odoo_filestore_path | default('/opt/odoo/data/filestore') }}"
+    state: directory
+    owner: "{{ odoo_host_user | default(101) }}" # Default Odoo user ID in official images
+    group: "{{ odoo_host_group | default(101) }}" # Default Odoo group ID
+    mode: '0755'
+  become: true
+
+- name: Create Odoo custom addons directory
+  ansible.builtin.file:
+    path: "{{ odoo_custom_addons_path | default('/opt/odoo/custom/addons') }}"
+    state: directory
+    owner: "{{ odoo_host_user | default(101) }}"
+    group: "{{ odoo_host_group | default(101) }}"
+    mode: '0755'
+  become: true
+  when: odoo_custom_addons_path is defined and odoo_custom_addons_path != ""
+
+- name: Create Odoo config directory (if odoo.conf is mounted from host)
+  ansible.builtin.file:
+    path: "{{ odoo_config_path | default('/opt/odoo/config') }}"
+    state: directory
+    owner: "{{ odoo_host_user | default(101) }}"
+    group: "{{ odoo_host_group | default(101) }}"
+    mode: '0755'
+  become: true
+  when: odoo_config_file_on_host is defined and odoo_config_file_on_host != ""
+
+- name: Deploy odoo.conf (if specified and mounted from host)
+  ansible.builtin.template: # Or copy if it's a static file
+    src: "{{ odoo_config_template_src | default('odoo.conf.j2') }}" # Assumes a template in role's templates dir
+    dest: "{{ odoo_config_path | default('/opt/odoo/config') }}/odoo.conf"
+    owner: "{{ odoo_host_user | default(101) }}"
+    group: "{{ odoo_host_group | default(101) }}"
+    mode: '0644'
+  become: true
+  when: odoo_config_file_on_host is defined and odoo_config_file_on_host != "" # This var signals mounting odoo.conf
+  notify: Restart Odoo Container
+
+- name: Pull Odoo Docker image
+  community.docker.docker_image:
+    name: "{{ odoo_image_name }}"
+    tag: "{{ odoo_image_tag | default('latest') }}"
+    source: pull
+  become: true
+
+- name: Run Odoo Docker container
+  community.docker.docker_container:
+    name: "{{ odoo_container_name | default('dfr_odoo_app') }}"
+    image: "{{ odoo_image_name }}:{{ odoo_image_tag | default('latest') }}"
+    state: started
+    restart_policy: always
+    ports: "{{ odoo_ports | default(['8069:8069', '8072:8072']) }}" # Default Odoo HTTP and Longpolling ports
+    volumes:
+      - "{{ odoo_filestore_path | default('/opt/odoo/data/filestore') }}:/mnt/extra-addons/odoo_filestore" # Path inside Odoo image for filestore
+      - "{{ odoo_custom_addons_path | default('/opt/odoo/custom/addons') }}:/mnt/extra-addons" # Path for custom addons
+      - "{{ odoo_config_path | default('/opt/odoo/config') }}/odoo.conf:/etc/odoo/odoo.conf:ro" # Mount odoo.conf if managed on host
+    env: "{{ odoo_env_vars | default({}) }}" # Pass DB connection, admin password, etc.
+    # Example odoo_env_vars:
+    #   HOST: "{{ odoo_db_host }}"
+    #   PORT: "{{ odoo_db_port | default('5432') }}"
+    #   USER: "{{ odoo_db_user }}"
+    #   PASSWORD: "{{ odoo_db_password }}" # Should come from vault
+    #   ADMIN_PASSWD: "{{ odoo_admin_password }}" # Should come from vault
+    #   ODOO_RC: "/etc/odoo/odoo.conf" # If odoo.conf is generated inside container or custom entrypoint
+    #   ADDITIONAL_ODOO_PARAMS: "--workers=2 --limit-time-cpu=600 --limit-time-real=1200"
+    user: "{{ odoo_container_user | default('odoo') }}" # User inside the container, usually 'odoo' or uid:gid
+    # network_mode: # Optional: if custom network is needed
+  become: true # Docker daemon usually runs as root

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- DFR Master Dashboard View (Form or Dashboard type) -->
+        <record id="view_dfr_master_dashboard_form" model="ir.ui.view">
+            <field name="name">dfr.master.dashboard.form</field>
+            <field name="model">ir.ui.view</field> <!-- Or custom transient model for data aggregation -->
+            <field name="arch" type="xml">
+                <form string="DFR Overview Dashboard">
+                    <sheet>
+                        <group string="Key Metrics Overview">
+                            <!-- Placeholder: These would ideally be custom widgets or fields from a transient model populated by sub-modules -->
+                            <group>
+                                <label for="total_farmers" string="Total Registered Farmers:"/>
+                                <field name="total_farmers" nolabel="1" readonly="1"/> <!-- Requires a field on the model -->
+                            </group>
+                            <group>
+                                <label for="pending_verifications" string="Pending Verifications:"/>
+                                <field name="pending_verifications" nolabel="1" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Quick Links">
+                            <button name="%(dfr_farmer_registry.action_dfr_farmer_list)d" string="Manage Farmers" type="action" class="oe_link"/>
+                            <button name="%(dfr_dynamic_forms.action_dfr_dynamic_form_list)d" string="Manage Dynamic Forms" type="action" class="oe_link"/>
+                            <!-- Add more quick links as needed -->
+                        </group>
+                        <notebook>
+                            <page string="Registration Trends">
+                                <!-- Placeholder for a chart or graph (e.g., from dfr_analytics_dashboards) -->
+                                <p>Registration trends graph would be embedded here.</p>
+                            </page>
+                            <page string="Recent Activities">
+                                <p>Recent system activities or alerts would be shown here.</p>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <!--
+        Alternative using Odoo's dashboard view type if preferred and more suitable:
+        <record id="view_dfr_master_dashboard_board" model="ir.ui.view">
+            <field name="name">dfr.master.dashboard.board</field>
+            <field name="model">board.board</field> <!- Odoo's dashboard model ->
+            <field name="arch" type="xml">
+                <dashboard>
+                    <group>
+                        <group>
+                            <action name="%(dfr_analytics_dashboards.action_kpi_total_farmers)d" string="Total Farmers KPI"/>
+                            <action name="%(dfr_analytics_dashboards.action_graph_registration_trend)d" string="Registration Trend"/>
+                        </group>
+                    </group>
+                    <column>
+                        <action name="%(dfr_farmer_registry.action_dfr_farmer_pending_verification_list)d" string="Farmers Pending Verification"/>
+                    </column>
+                </dashboard>
+            </field>
+        </record>
+        -->
+    </data>
+</odoo>

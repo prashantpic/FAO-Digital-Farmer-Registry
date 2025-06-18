@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0"> <!-- noupdate="1" if rules should not be overridden on update -->
+
+        <!-- Record Rule for National Administrators on dfr.form based on country_id -->
+        <!-- This assumes that the user model (res.users) has a many2one field 'country_id'. -->
+        <!-- If dfr_rbac_config or dfr_common provides a different way to get user's country, adjust accordingly. -->
+        <!-- Example: user.company_id.country_id if forms are country-specific via company -->
+        <record id="rule_dfr_form_national_admin_country" model="ir.rule">
+            <field name="name">DFR Form: National Admin Country Access</field>
+            <field name="model_id" ref="model_dfr_form"/>
+            <field name="groups" eval="[(4, ref('dfr_rbac_config.group_dfr_national_admin'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+            <field name="domain_force">[
+                '|',
+                    ('country_id', '=', False),
+                    ('country_id', '=', user.country_id.id)
+            ]</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Record Rule for Supervisors to see submissions related to their country -->
+        <!-- (if supervisors are also country-specific) -->
+        <record id="rule_dfr_form_submission_supervisor_country" model="ir.rule">
+            <field name="name">DFR Submission: Supervisor Country Access</field>
+            <field name="model_id" ref="model_dfr_form_submission"/>
+            <field name="groups" eval="[(4, ref('dfr_rbac_config.group_dfr_supervisor'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/> <!-- As per CSV -->
+            <field name="perm_create" eval="False"/> <!-- As per CSV -->
+            <field name="perm_unlink" eval="False"/> <!-- As per CSV -->
+            <field name="domain_force">[
+                '|',
+                    ('form_version_id.form_master_id.country_id', '=', False),
+                    ('form_version_id.form_master_id.country_id', '=', user.country_id.id)
+            ]</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Record Rule for Enumerators to see/create submissions related to their country -->
+        <record id="rule_dfr_form_submission_enumerator_country" model="ir.rule">
+            <field name="name">DFR Submission: Enumerator Country Access</field>
+            <field name="model_id" ref="model_dfr_form_submission"/>
+            <field name="groups" eval="[(4, ref('dfr_rbac_config.group_dfr_enumerator'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/> <!-- As per CSV, enumerators usually can't edit after submission -->
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="domain_force">[
+                '|',
+                    ('form_version_id.form_master_id.country_id', '=', False),
+                    ('form_version_id.form_master_id.country_id', '=', user.country_id.id)
+            ]</field>
+            <field name="active" eval="True"/>
+        </record>
+        
+        <!-- Rule for Enumerators to only read their own submissions or those they are assigned to -->
+        <!-- This is a more complex rule and might depend on other fields/models not defined here yet e.g. assigned_enumerator_id on submission -->
+        <!-- For now, we'll assume a simpler rule based on submitted_by_user_id for read access -->
+        <record id="rule_dfr_form_submission_enumerator_own" model="ir.rule">
+            <field name="name">DFR Submission: Enumerator Own Submissions</field>
+            <field name="model_id" ref="model_dfr_form_submission"/>
+            <field name="groups" eval="[(4, ref('dfr_rbac_config.group_dfr_enumerator'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="True"/> <!-- Create is global based on country -->
+            <field name="perm_unlink" eval="False"/>
+            <!-- This rule applies ON TOP of the country rule and CSV access -->
+            <!-- An enumerator can read any submission from their country by default based on CSV. -->
+            <!-- To restrict further to only *their own* submissions: -->
+            <!-- <field name="domain_force">[('submitted_by_user_id', '=', user.id)]</field> -->
+            <!-- If Supervisors should see all from their country, and Enumerators only their own, then -->
+            <!-- the Supervisor country rule is fine. The Enumerator country rule might be too broad for read. -->
+            <!-- Let's refine: Enumerators can CREATE for their country, but only READ/WRITE (if allowed) their OWN. -->
+            <!-- This needs careful layering. The CSV gives broad C/R for Enumerators. -->
+            <!-- We might need separate rules for Create (country-based) and R/W (user-based). -->
+            <!-- For simplicity as per SDS (Read own/assigned): -->
+            <!-- This rule will be combined with the country rule. -->
+            <!-- An enumerator can only read submissions if they are the submitter AND it's in their country -->
+            <!-- Domain below makes more sense if CSV allows read for their group, then this rule narrows it. -->
+             <field name="domain_force">[('submitted_by_user_id', '=', user.id)]</field>
+             <!-- Note: If an Enumerator needs to see submissions by others in their team/area,  -->
+             <!-- a more complex sharing mechanism or group-based assignment would be needed. -->
+             <!-- The SDS also says "Read (own/assigned)". "assigned" is not implemented here. -->
+        </record>
+
+    </data>
+</odoo>

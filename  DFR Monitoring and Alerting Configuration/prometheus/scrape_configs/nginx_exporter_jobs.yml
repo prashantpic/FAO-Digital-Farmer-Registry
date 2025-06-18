@@ -1,0 +1,8 @@
+- job_name: 'dfr_nginx_proxy'
+  # Assuming nginx-prometheus-exporter or stub_status_exporter
+  metrics_path: /metrics # or /stub_status for native module
+  static_configs:
+    - targets: ['nginx_instance1_host:9113', 'nginx_instance2_host:9113'] # Placeholder for actual exporter/stub_status endpoints
+      labels:
+        env: 'production'
+        country: 'CKI'

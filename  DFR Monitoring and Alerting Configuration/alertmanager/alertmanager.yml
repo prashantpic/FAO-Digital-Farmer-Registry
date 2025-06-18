@@ -1,0 +1,75 @@
+global:
+  # smtp_smarthost: '{{ env "SMTP_SMARTHOST" }}'
+  # smtp_from: '{{ env "SMTP_FROM" }}'
+  # smtp_auth_username: '{{ env "SMTP_USERNAME" }}'
+  # smtp_auth_password: '{{ env "SMTP_PASSWORD" }}'
+  # smtp_auth_password_file: '/etc/alertmanager/smtp_password.txt'
+
+  # slack_api_url: '{{ env "SLACK_API_URL" }}'
+  # slack_api_url_file: '/etc/alertmanager/slack_url.txt'
+
+route:
+  group_by: ['alertname', 'country', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-email-receiver'
+
+  routes:
+    - receiver: 'critical-alerts-pager'
+      match_re:
+        severity: critical
+      continue: true
+
+    - receiver: 'db-admins-email'
+      match:
+        service: postgresql
+      continue: true
+
+    - receiver: 'backup-ops-email'
+      match:
+        service: backup
+      continue: true
+
+receivers:
+- name: 'default-email-receiver'
+  email_configs:
+  - to: 'dfr-support-group@example.com' # Placeholder, configure per country/env
+    send_resolved: true
+    html: '{{ template "dfr.email.html_body" . }}'
+    headers:
+      Subject: '{{ template "dfr.email.subject" . }}'
+
+- name: 'critical-alerts-pager'
+  # pagerduty_configs:
+  # - service_key: '{{ env "PAGERDUTY_SERVICE_KEY_CRITICAL" }}'
+  email_configs: # Fallback or alternative for criticals
+  - to: 'dfr-critical-oncall@example.com' # Placeholder
+    html: '{{ template "dfr.email.html_body_critical" . }}'
+    headers:
+      Subject: '[CRITICAL] {{ template "dfr.email.subject" . }}'
+
+- name: 'db-admins-email'
+  email_configs:
+  - to: 'dfr-db-admins@example.com' # Placeholder
+    send_resolved: true
+    html: '{{ template "dfr.email.html_body" . }}'
+    headers:
+      Subject: '[DB Alert] {{ template "dfr.email.subject" . }}'
+
+- name: 'backup-ops-email'
+  email_configs:
+  - to: 'dfr-backup-ops@example.com' # Placeholder
+    send_resolved: true
+    html: '{{ template "dfr.email.html_body" . }}'
+    headers:
+      Subject: '[Backup Alert] {{ template "dfr.email.subject" . }}'
+
+# - name: 'slack-notifications'
+#   slack_configs:
+#   - channel: '#dfr-alerts'
+#     send_resolved: true
+#     text: '{{ template "dfr.slack.message" . }}'
+
+templates:
+- '/etc/alertmanager/templates/*.tmpl'

@@ -1,0 +1,40 @@
+<odoo>
+    <data>
+        <!-- 
+            Assumptions for parent menu:
+            The SDS suggests `dfr_rbac_config.menu_dfr_administration_settings`.
+            This menu item must exist in the `dfr_rbac_config` module.
+            If `dfr_rbac_config` defines a different structure, this parent might need adjustment.
+            Example structure in dfr_rbac_config might be:
+            <menuitem id="menu_dfr_root" name="DFR Platform" sequence="10"/>
+            <menuitem id="menu_dfr_administration_root" name="Administration" parent="menu_dfr_root" sequence="100"/>
+            <menuitem id="menu_dfr_administration_settings" name="Settings" parent="menu_dfr_administration_root" sequence="10"/>
+        -->
+
+        <menuitem
+            id="menu_dfr_audit_log"
+            name="DFR Audit Logs"
+            action="action_dfr_audit_log_view"
+            parent="dfr_rbac_config.menu_dfr_administration_settings" 
+            sequence="50"
+            groups="dfr_rbac_config.group_dfr_national_administrator,dfr_rbac_config.group_dfr_super_administrator"
+        />
+
+        <!--
+        Alternative parent if menu_dfr_administration_settings is not suitable or does not exist:
+        1. Odoo's general Settings menu:
+           parent="base.menu_administration" 
+           (This would place it under the general Odoo Settings menu, which might be too generic for DFR specific logs)
+
+        2. A DFR-specific top-level Admin menu (if menu_dfr_administration_settings is a sub-sub-menu):
+           parent="dfr_rbac_config.menu_dfr_administration_root" (if such a menu exists)
+
+        3. Create a new top-level 'Audit' menu specifically for DFR:
+           <menuitem id="menu_dfr_audit_top" name="DFR Auditing" sequence="60" groups="dfr_rbac_config.group_dfr_national_administrator,dfr_rbac_config.group_dfr_super_administrator"/>
+           <menuitem id="menu_dfr_audit_log" ... parent="menu_dfr_audit_top" ... />
+        
+        The choice of parent depends on the overall menu structure defined in DFR_MOD_RBAC_CONFIG and DFR_MOD_CORE_COMMON.
+        Sticking to the SDS specified parent: dfr_rbac_config.menu_dfr_administration_settings
+        -->
+    </data>
+</odoo>

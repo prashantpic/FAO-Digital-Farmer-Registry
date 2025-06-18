@@ -1,0 +1,79 @@
+sequenceDiagram
+    actor "External System Client" as ExternalSystemClient
+    participant "DFR Reverse Proxy (Nginx)" as dfrinfrareverseproxy021
+    participant "DFR API Service (Odoo Module)" as dfrmodulerestapi008
+    participant "DFR RBAC Service (Odoo Module)" as dfrmodulerbacconfig004
+    participant "DFR Farmer Registry Service (Odoo Module)" as dfrmodulefarmerregistry002
+    participant "DFR Audit Log Service (Odoo Module)" as dfrmodulesecurityauditlog013
+
+    note over ExternalSystemClient: External System Client must be pre-registered and possess valid clientid and clientsecret for OAuth2 Client Credentials Grant.
+
+    note over ExternalSystemClient, dfrmodulesecurityauditlog013: Phase 1: OAuth2 Token Acquisition (Client Credentials Grant)
+
+    ExternalSystemClient-dfrinfrareverseproxy021: 2. POST /api/oauth2/token (clientid, clientsecret, granttype='clientcredentials')
+    activate dfrinfrareverseproxy021
+
+    dfrinfrareverseproxy021-dfrmodulerestapi008: 3. Forward: POST /api/oauth2/token (Request for Access Token)
+    activate dfrmodulerestapi008
+    dfrmodulerestapi008-dfrmodulerestapi008: 3.1. Validate client credentials (clientid, clientsecret)
+
+    alt Client Credentials Valid?
+        dfrmodulerestapi008-dfrmodulerestapi008: 4.1. Generate Access Token (JWT)
+        dfrmodulerestapi008--dfrinfrareverseproxy021: 4.2. 200 OK (accesstoken, tokentype, expiresin)
+    else Invalid Credentials
+        dfrmodulerestapi008--dfrinfrareverseproxy021: 5.1. 401 Unauthorized (Invalid client credentials)
+    end
+    deactivate dfrmodulerestapi008
+
+    dfrinfrareverseproxy021--ExternalSystemClient: 7. Return: Access Token / Error Response
+    deactivate dfrinfrareverseproxy021
+
+    note over ExternalSystemClient, dfrmodulesecurityauditlog013: Phase 2: Farmer Data Retrieval using Access Token
+
+    ExternalSystemClient-dfrinfrareverseproxy021: 9. GET /api/dfr/farmer/{farmerid} (Authorization: Bearer )
+    activate dfrinfrareverseproxy021
+
+    dfrinfrareverseproxy021-dfrmodulerestapi008: 10. Forward: GET /api/dfr/farmer/{farmerid} (Process Farmer Data Request)
+    activate dfrmodulerestapi008
+    note over dfrmodulerestapi008: DFR API Service internally performs OAuth2 token validation: signature check, expiry check, and extracts client identity and granted scopes from the token.
+    dfrmodulerestapi008-dfrmodulerestapi008: 10.1. Verify Access Token (Signature, Expiry, Claims)
+
+    alt Access Token Valid?
+        dfrmodulerestapi008-dfrmodulerbacconfig004: 10.2.1. Check Client Permissions (clientid from token, scope, resource='farmerdata', action='read')
+        activate dfrmodulerbacconfig004
+        dfrmodulerbacconfig004--dfrmodulerestapi008: Authorization Status (Authorized/Denied)
+        deactivate dfrmodulerbacconfig004
+
+        alt Authorized to Read Farmer Data?
+            dfrmodulerestapi008-dfrmodulefarmerregistry002: 10.2.2.1. Get Farmer Data (farmerid or queryparams)
+            activate dfrmodulefarmerregistry002
+            note over dfrmodulefarmerregistry002: DFR Farmer Registry Service queries the PostgreSQL database using Odoo ORM to fetch farmer details.
+            dfrmodulefarmerregistry002--dfrmodulerestapi008: Farmer Data / Not Found
+            deactivate dfrmodulefarmerregistry002
+
+            alt Farmer Data Found?
+                dfrmodulerestapi008-dfrmodulesecurityauditlog013: 10.2.2.2.1. Log API Data Access (Success, clientid, farmerid)
+                activate dfrmodulesecurityauditlog013
+                deactivate dfrmodulesecurityauditlog013
+                dfrmodulerestapi008--dfrinfrareverseproxy021: 10.2.2.2.2. 200 OK (FarmerData JSON)
+            else Farmer Data Not Found
+                dfrmodulerestapi008-dfrmodulesecurityauditlog013: 10.2.2.3.1. Log API Data Access (NotFound, clientid, farmerid)
+                activate dfrmodulesecurityauditlog013
+                deactivate dfrmodulesecurityauditlog013
+                dfrmodulerestapi008--dfrinfrareverseproxy021: 10.2.2.3.2. 404 Not Found
+            end
+        else Not Authorized
+            dfrmodulerestapi008-dfrmodulesecurityauditlog013: 10.2.3.1. Log API Access Attempt (Denied-Authorization, clientid)
+            activate dfrmodulesecurityauditlog013
+            deactivate dfrmodulesecurityauditlog013
+            dfrmodulerestapi008--dfrinfrareverseproxy021: 10.2.3.2. 403 Forbidden
+        end
+    else Token Invalid/Expired
+        dfrmodulerestapi008--dfrinfrareverseproxy021: 10.3.1. 401 Unauthorized (Token invalid or expired)
+    end
+    deactivate dfrmodulerestapi008
+
+    dfrinfrareverseproxy021--ExternalSystemClient: 11. Return: Farmer Data JSON / Error Response
+    deactivate dfrinfrareverseproxy021
+    
+    note over dfrmodulesecurityauditlog013: Audit log calls are shown as asynchronous (fire-and-forget) to not block the main response flow. Actual implementation might be synchronous within the same transaction if performance permits and logging is critical for the operation's atomicity.

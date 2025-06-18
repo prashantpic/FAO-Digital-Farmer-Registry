@@ -1,0 +1,73 @@
+sequenceDiagram
+    actor "National Admin" as NationalAdmin
+    participant "Odoo Admin Portal UI" as dfrinfraodooappcontainer019
+    participant "Dynamic Form Engine Module" as dfrmoduledynamicforms003
+    participant "Audit Logging Module" as dfrmodulesecurityauditlog013
+
+    note over NationalAdmin: Authentication & Authorization via Odoo security framework (using dfr-module-rbac-config-004) is a precondition for all actions by National Admin.
+
+    NationalAdmin--dfrinfraodooappcontainer019: 1. Logs in and navigates to Dynamic Form Engine
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019--dfrmoduledynamicforms003: 1.1. Request Form Engine UI data (e.g., list of forms)
+    activate dfrmoduledynamicforms003
+    dfrmoduledynamicforms003--dfrinfraodooappcontainer019: 1.2. Form Engine UI data
+    deactivate dfrmoduledynamicforms003
+    dfrinfraodooappcontainer019--NationalAdmin: Displays Dynamic Form Engine Dashboard
+    deactivate dfrinfraodooappcontainer019
+
+    NationalAdmin--dfrinfraodooappcontainer019: 2. Clicks 'Create New Form'
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019--dfrmoduledynamicforms003: 2.1. Initiate new form creation
+    activate dfrmoduledynamicforms003
+    dfrmoduledynamicforms003--dfrinfraodooappcontainer019: 2.2. New blank form UI structure
+    deactivate dfrmoduledynamicforms003
+    dfrinfraodooappcontainer019--NationalAdmin: Displays Form Design Interface
+    deactivate dfrinfraodooappcontainer019
+
+    NationalAdmin--dfrinfraodooappcontainer019: 3. Defines Form Metadata (Name, Description)
+    dfrinfraodooappcontainer019--NationalAdmin: Updates UI with metadata
+
+    loop For each field to add
+        NationalAdmin--dfrinfraodooappcontainer019: 4.1. Clicks 'Add Field', selects type, enters label
+        dfrinfraodooappcontainer019--NationalAdmin: Updates form design with new field structure
+        opt Configure Validation Rules
+            NationalAdmin--dfrinfraodooappcontainer019: 4.2. Configures validation rules
+            dfrinfraodooappcontainer019--NationalAdmin: Updates field with validation rules
+        end
+        opt Configure Conditional Logic
+            NationalAdmin--dfrinfraodooappcontainer019: 4.3. Configures conditional logic
+            dfrinfraodooappcontainer019--NationalAdmin: Updates field with conditional logic
+        end
+    end
+    note right of dfrinfraodooappcontainer019: Form field configuration (validation, conditional logic) is handled client-side in the UI and then sent as part of fieldsdata to the backend.
+
+    NationalAdmin--dfrinfraodooappcontainer019: 5. Enters Version information and Clicks 'Save Form'
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019--dfrmoduledynamicforms003: 5.1. saveformdefinition(formdata, fieldsdata, version, status='draft')
+    activate dfrmoduledynamicforms003
+    dfrmoduledynamicforms003--dfrmoduledynamicforms003: 5.1.1. Validate form & field data server-side
+    dfrmoduledynamicforms003--dfrmoduledynamicforms003: 5.1.2. Persist form definition to Database
+    dfrmoduledynamicforms003--dfrmodulesecurityauditlog013: 5.2. logevent(type='formsaved', formid, userid)
+    activate dfrmodulesecurityauditlog013
+    dfrmodulesecurityauditlog013--dfrmoduledynamicforms003: 5.3. Log Acknowledged
+    deactivate dfrmodulesecurityauditlog013
+    dfrmoduledynamicforms003--dfrinfraodooappcontainer019: 5.4. Success/Failure, Form ID
+    deactivate dfrmoduledynamicforms003
+    dfrinfraodooappcontainer019--NationalAdmin: Displays 'Form Saved' notification
+    deactivate dfrinfraodooappcontainer019
+
+    NationalAdmin--dfrinfraodooappcontainer019: 6. Selects saved form, Clicks 'Publish Form'
+    activate dfrinfraodooappcontainer019
+    dfrinfraodooappcontainer019--dfrmoduledynamicforms003: 6.1. publishform(formid, versiontopublish)
+    activate dfrmoduledynamicforms003
+    dfrmoduledynamicforms003--dfrmoduledynamicforms003: 6.1.1. Update form status to 'Published' in Database
+    dfrmoduledynamicforms003--dfrmodulesecurityauditlog013: 6.2. logevent(type='formpublished', formid, userid)
+    activate dfrmodulesecurityauditlog013
+    dfrmodulesecurityauditlog013--dfrmoduledynamicforms003: 6.3. Log Acknowledged
+    deactivate dfrmodulesecurityauditlog013
+    dfrmoduledynamicforms003--dfrinfraodooappcontainer019: 6.4. Success/Failure
+    deactivate dfrmoduledynamicforms003
+    dfrinfraodooappcontainer019--NationalAdmin: Displays 'Form Published' notification
+    deactivate dfrinfraodooappcontainer019
+
+    note over dfrmoduledynamicforms003: Versioning strategy (e.g., creating new immutable versions on publish or allowing edits to drafts) is handled by dfr-module-dynamic-forms-003.

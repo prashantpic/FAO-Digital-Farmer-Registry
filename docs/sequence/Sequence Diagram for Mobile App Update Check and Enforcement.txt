@@ -1,0 +1,44 @@
+sequenceDiagram
+    actor "Mobile Platform Services" as REPODFRMOBILEAPPPLATFORMSERVICES018
+    participant "Mobile Sync Service" as REPODFRMOBILEAPPDATASYNC016
+    participant "DFR REST API" as REPODFRMODULERESTAPI008
+    participant "Odoo Application Server" as REPODFRINFRAODOOAPPCONTAINER019
+
+    note over REPODFRMOBILEAPPDATASYNC016: Sequence triggered on app start or before a sync operation.
+    REPODFRMOBILEAPPDATASYNC016-REPODFRMOBILEAPPPLATFORMSERVICES018: 1. getCurrentAppVersion()
+    activate REPODFRMOBILEAPPDATASYNC016
+    activate REPODFRMOBILEAPPPLATFORMSERVICES018
+    REPODFRMOBILEAPPPLATFORMSERVICES018--REPODFRMOBILEAPPDATASYNC016: 1. returnMessage: currentAppVersion
+    deactivate REPODFRMOBILEAPPPLATFORMSERVICES018
+
+    REPODFRMOBILEAPPDATASYNC016-REPODFRMODULERESTAPI008: 2. GET /api/app/versioncheck?currentversion={currentAppVersion}
+    activate REPODFRMODULERESTAPI008
+    note right of REPODFRMODULERESTAPI008: Error Handling: If API call (2) fails, Mobile Sync Service may show an error and potentially allow offline mode or restrict sync based on policy. This path is not detailed here but is a consideration.
+    
+    REPODFRMODULERESTAPI008-REPODFRINFRAODOOAPPCONTAINER019: 2.1. fetchLatestAppVersionInfo()
+    activate REPODFRINFRAODOOAPPCONTAINER019
+    REPODFRINFRAODOOAPPCONTAINER019--REPODFRMODULERESTAPI008: 2.1. returnMessage: appVersionDetails (requiredversion, recommendedversion, iscritical, updateurl, message)
+    deactivate REPODFRINFRAODOOAPPCONTAINER019
+    
+    REPODFRMODULERESTAPI008--REPODFRMOBILEAPPDATASYNC016: 2. returnMessage: HTTP 200 OK with appVersionDetails
+    deactivate REPODFRMODULERESTAPI008
+
+    REPODFRMOBILEAPPDATASYNC016-REPODFRMOBILEAPPDATASYNC016: 3. processAppVersionResponse(appVersionDetails)
+
+    alt Critical Update Required
+        note left of REPODFRMOBILEAPPDATASYNC016: Alternative Path 1: Critical Update Required (if iscritical is true and currentAppVersion n        REPODFRMOBILEAPPDATASYNC016-REPODFRMOBILEAPPPLATFORMSERVICES018: 4.1.1. showMandatoryUpdatePrompt(updateurl, message)
+        activate REPODFRMOBILEAPPPLATFORMSERVICES018
+        note over REPODFRMOBILEAPPPLATFORMSERVICES018: User performs app update via MDM, private store, or manual APK install (as per REQ-DIO-012). This action is external to this diagram.
+        deactivate REPODFRMOBILEAPPPLATFORMSERVICES018
+        REPODFRMOBILEAPPDATASYNC016-REPODFRMOBILEAPPDATASYNC016: 4.1.2. restrictAppFunctionality()
+    else Recommended Update Available
+        note left of REPODFRMOBILEAPPDATASYNC016: Alternative Path 2: Recommended Update Available (if !iscritical and currentAppVersion n        REPODFRMOBILEAPPDATASYNC016-REPODFRMOBILEAPPPLATFORMSERVICES018: 4.2.1. showRecommendedUpdatePrompt(updateurl, message)
+        activate REPODFRMOBILEAPPPLATFORMSERVICES018
+        deactivate REPODFRMOBILEAPPPLATFORMSERVICES018
+        REPODFRMOBILEAPPDATASYNC016-REPODFRMOBILEAPPDATASYNC016: 4.2.2. proceedWithNormalOperation()
+    else App is up-to-date or newer
+        note left of REPODFRMOBILEAPPDATASYNC016: Alternative Path 3: App is up-to-date or newer.
+        REPODFRMOBILEAPPDATASYNC016-REPODFRMOBILEAPPDATASYNC016: 4.3.1. proceedWithNormalOperation() (App is up-to-date)
+    end
+    
+    deactivate REPODFRMOBILEAPPDATASYNC016

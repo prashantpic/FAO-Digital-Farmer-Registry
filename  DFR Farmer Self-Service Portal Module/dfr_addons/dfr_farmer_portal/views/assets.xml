@@ -1,0 +1,13 @@
+<odoo>
+    <data>
+        <template id="assets_frontend_dfr_farmer_portal" inherit_id="web.assets_frontend" name="DFR Portal Assets">
+            <xpath expr="." position="inside">
+                <link rel="stylesheet" type="text/css" href="/dfr_farmer_portal/static/src/css/portal_main.css"/>
+                <link rel="stylesheet" type="text/css" href="/dfr_farmer_portal/static/src/css/portal_accessibility.css"/>
+                <script type="text/javascript" src="/dfr_farmer_portal/static/src/js/portal_accessibility.js" defer="defer"></script>
+                <script type="text/javascript" src="/dfr_farmer_portal/static/src/js/portal_preregistration.js" defer="defer"></script>
+                <script type="text/javascript" src="/dfr_farmer_portal/static/src/js/portal_dynamic_form.js" defer="defer"></script>
+            </xpath>
+        </template>
+    </data>
+</odoo>

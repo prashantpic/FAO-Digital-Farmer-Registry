@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Example OWL Component Template for a conceptual Master Dashboard Widget -->
+    <!--
+    <t t-name="dfr_admin_portal_master.DFRMasterDashboardWidgetTemplate" owl="1">
+        <div class="dfr_master_dashboard_widget container-fluid">
+            <h4>DFR System Overview</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Farmers</h5>
+                            <p class="card-text display-4"><t t-esc="state.totalFarmers"/></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Pending Forms</h5>
+                            <p class="card-text display-4"><t t-esc="state.pendingForms"/></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+             <p class="mt-3">
+                For detailed analytics, please visit the <a t-att-href="'/web#action=' + env.services.action.getAction('dfr_analytics_dashboards.action_dfr_main_dashboard').id">Analytics Dashboard</a>.
+            </p>
+        </div>
+    </t>
+    -->
+
+    <!-- This file will be empty if no custom OWL components are defined in dfr_portal_master_widgets.js -->
+    <t t-name="dfr_admin_portal_master.PlaceholderOwlTemplate" owl="1">
+        <div>
+            <!-- This is a placeholder. Add actual OWL templates if custom components are created. -->
+        </div>
+    </t>
+</templates>

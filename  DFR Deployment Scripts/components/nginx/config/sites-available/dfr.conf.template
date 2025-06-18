@@ -1,0 +1,113 @@
+# Upstream for Odoo longpolling (typically on port 8072)
+upstream odoo_longpolling {
+    server {{ODOO_APP_SERVICE_HOST}}:{{ODOO_LONGPOLLING_PORT | default(8072)}};
+}
+
+# Upstream for Odoo main application (typically on port 8069)
+upstream odoo_app {
+    server {{ODOO_APP_SERVICE_HOST}}:{{ODOO_APP_SERVICE_PORT | default(8069)}};
+}
+
+# HTTP server block: Redirect all HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80; # Listen on IPv6 as well if enabled
+    server_name {{NGINX_SERVER_NAME}}; # e.g., dfr.example.country or _.yourdomain.com
+
+    # Optional: ACME challenge for Let's Encrypt if handled by Nginx
+    # location ~ /.well-known/acme-challenge/ {
+    #     root /var/www/html; # Or your certbot webroot
+    #     allow all;
+    # }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS server block
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2; # Listen on IPv6 as well if enabled
+    server_name {{NGINX_SERVER_NAME}};
+
+    # SSL Configuration
+    ssl_certificate /etc/nginx/ssl/{{SSL_CERTIFICATE_FILE}};
+    ssl_certificate_key /etc/nginx/ssl/{{SSL_CERTIFICATE_KEY_FILE}};
+
+    # Recommended SSL/TLS settings (some might be global in nginx.conf.template)
+    # ssl_protocols TLSv1.2 TLSv1.3; # Already in nginx.conf.template
+    # ssl_ciphers '...'; # Use a strong cipher list if not globally defined or to override
+    # ssl_prefer_server_ciphers on; # If specific cipher order is desired
+
+    # Path to Diffie-Hellman parameters (generate with: openssl dhparam -out /etc/nginx/ssl/dhparam.pem 2048)
+    # ssl_dhparam /etc/nginx/ssl/dhparam.pem; # If using DHE ciphers
+
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m; # About 40,000 sessions
+    ssl_session_tickets off; # Improves security by ensuring PFS for every session
+
+    # HSTS (HTTP Strict Transport Security)
+    # Tells browsers to always connect via HTTPS for this domain for max-age seconds.
+    # includeSubDomains is optional; add if all subdomains are HTTPS.
+    # preload is optional; allows submission to HSTS preload lists.
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # OCSP Stapling - improves SSL handshake speed
+    # ssl_stapling on;
+    # ssl_stapling_verify on;
+    # ssl_trusted_certificate /etc/nginx/ssl/ca_chain.pem; # Path to your CA's intermediate and root certs combined
+
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    # add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' ... ;"; # Define a strong CSP
+
+    # Odoo specific proxy settings
+    proxy_intercept_errors on; # Display Nginx error pages instead of Odoo's for certain errors
+    proxy_buffers 16 64k;
+    proxy_buffer_size 128k; # Should be at least `proxy_busy_buffers_size`
+    proxy_busy_buffers_size 128k;
+    client_max_body_size {{NGINX_CLIENT_MAX_BODY_SIZE | default(100m)}}; # For large file uploads to Odoo
+
+    # Timeouts
+    proxy_read_timeout {{NGINX_PROXY_READ_TIMEOUT | default(720s)}}; # For longpolling and long report generation
+    proxy_connect_timeout {{NGINX_PROXY_CONNECT_TIMEOUT | default(300s)}};
+    proxy_send_timeout {{NGINX_PROXY_SEND_TIMEOUT | default(300s)}};
+
+    # Standard proxy headers
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+
+    # Odoo Longpolling
+    location /longpolling {
+        proxy_pass http://odoo_longpolling;
+        # Headers already set above
+    }
+
+    # Main Odoo application
+    location / {
+        proxy_redirect off; # Important for Odoo
+        proxy_pass http://odoo_app;
+        # Headers already set above
+    }
+
+    # Cache static files aggressively
+    location ~* /web/static/ {
+        proxy_cache_valid 200 302 60m;    # Cache successful responses for 60 minutes
+        proxy_cache_valid 404      1m;     # Cache 404s for 1 minute
+        proxy_buffering    on;
+        expires 864000; # Cache in client browser for 10 days (864000 seconds)
+        proxy_pass http://odoo_app;
+        # Add ETag and If-Modified-Since handling if needed, though Odoo might do this
+    }
+
+    # Access and error logs for this server block (can be customized)
+    # access_log /var/log/nginx/{{NGINX_SERVER_NAME}}.access.log;
+    # error_log /var/log/nginx/{{NGINX_SERVER_NAME}}.error.log;
+}

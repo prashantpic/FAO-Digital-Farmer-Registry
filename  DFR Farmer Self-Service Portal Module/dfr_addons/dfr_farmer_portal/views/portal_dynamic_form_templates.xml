@@ -1,0 +1,138 @@
+<odoo>
+    <data>
+        <!-- Dynamic Form Display Template -->
+        <template id="portal_dynamic_form_display_template" name="Display Dynamic Form" inherit_id="dfr_farmer_portal.portal_layout">
+            <xpath expr="//t[@t-call-block='main_content_placeholder']" position="replace">
+                <div id="wrap" class="container my-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10">
+                            <h1 class="mb-4 text-center" t-esc="form_record.name or 'Dynamic Form'">Form Title</h1>
+
+                            <t t-if="general_error">
+                                <div class="alert alert-danger" role="alert">
+                                    <t t-esc="general_error"/>
+                                </div>
+                            </t>
+
+                            <form role="form" id="dynamic_form" t-attf-action="/portal/forms/#{form_record.id}" method="POST" class="needs-validation" novalidate="novalidate" t-att-data-form-definition="form_definition_json_string or ''">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <div id="dynamic-form-fields-container">
+                                    <t t-foreach="form_definition.get('fields', [])" t-as="field">
+                                        <div class="mb-3" t-attf-class="form_field_#{field.name} #{field.get('container_class', '')}" t-att-data-field-name="field.name">
+                                            <label t-att-for="field.name" class="form-label">
+                                                <t t-esc="field.label"/>
+                                                <span class="text-danger" t-if="field.is_required">*</span>
+                                            </label>
+
+                                            <t t-if="field.type == 'textarea'">
+                                                <textarea class="form-control"
+                                                          t-att-id="field.name"
+                                                          t-att-name="field.name"
+                                                          t-att-rows="field.rows or 3"
+                                                          t-att-placeholder="field.placeholder or None"
+                                                          t-att-required="field.is_required or None"
+                                                          t-att-aria-required="field.is_required and 'true' or None"
+                                                          t-att-aria-invalid="errors.get(field.name) and 'true' or None"
+                                                          t-att-aria-describedby="((field.help_text and 'help_' + field.name + ' ') or '') + (errors.get(field.name) and ('error_' + field.name) or '') or None"
+                                                          ><t t-esc="values.get(field.name)"/></textarea>
+                                            </t>
+                                            <t t-elif="field.type == 'select'">
+                                                <select class="form-select"
+                                                        t-att-id="field.name"
+                                                        t-att-name="field.name"
+                                                        t-att-required="field.is_required or None"
+                                                        t-att-aria-required="field.is_required and 'true' or None"
+                                                        t-att-aria-invalid="errors.get(field.name) and 'true' or None"
+                                                        t-att-aria-describedby="((field.help_text and 'help_' + field.name + ' ') or '') + (errors.get(field.name) and ('error_' + field.name) or '') or None">
+                                                    <option value="" t-if="field.placeholder or not field.is_required"><t t-esc="field.placeholder or 'Select an option...'"/></option>
+                                                    <t t-foreach="field.options or []" t-as="option">
+                                                        <option t-att-value="option.value" t-att-selected="option.value == values.get(field.name)">
+                                                            <t t-esc="option.label"/>
+                                                        </option>
+                                                    </t>
+                                                </select>
+                                            </t>
+                                            <t t-elif="field.type in ['checkbox', 'radio']">
+                                                <!-- Basic rendering for checkbox/radio groups; might need more complex structure for styling -->
+                                                <div t-att-id="field.name" class="form-group-options">
+                                                    <t t-foreach="field.options or []" t-as="option">
+                                                        <div class="form-check">
+                                                            <input t-att-type="field.type"
+                                                                   class="form-check-input"
+                                                                   t-att-name="field.name"
+                                                                   t-att-id="'%s_%s' % (field.name, option.value)"
+                                                                   t-att-value="option.value"
+                                                                   t-att-checked="isinstance(values.get(field.name), list) and option.value in values.get(field.name) or option.value == values.get(field.name) or None"
+                                                                   t-att-required="field.is_required and loop.first or None"
+                                                                   t-att-aria-required="field.is_required and loop.first and 'true' or None"
+                                                                   t-att-aria-invalid="errors.get(field.name) and 'true' or None"
+                                                                   t-att-aria-describedby="((field.help_text and loop.first and 'help_' + field.name + ' ') or '') + (errors.get(field.name) and loop.first and ('error_' + field.name) or '') or None"/>
+                                                            <label class="form-check-label" t-att-for="'%s_%s' % (field.name, option.value)">
+                                                                <t t-esc="option.label"/>
+                                                            </label>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                            <t t-else=""> <!-- Handles text, number, date, email, tel, password, etc. -->
+                                                <input t-att-type="field.type or 'text'"
+                                                       class="form-control"
+                                                       t-att-id="field.name"
+                                                       t-att-name="field.name"
+                                                       t-att-value="values.get(field.name)"
+                                                       t-att-placeholder="field.placeholder or None"
+                                                       t-att-required="field.is_required or None"
+                                                       t-att-aria-required="field.is_required and 'true' or None"
+                                                       t-att-aria-invalid="errors.get(field.name) and 'true' or None"
+                                                       t-att-aria-describedby="((field.help_text and 'help_' + field.name + ' ') or '') + (errors.get(field.name) and ('error_' + field.name) or '') or None"/>
+                                            </t>
+
+                                            <div t-if="field.help_text" t-att-id="'help_' + field.name" class="form-text text-muted">
+                                                <small><t t-esc="field.help_text"/></small>
+                                            </div>
+                                            <div t-if="errors.get(field.name)" t-att-id="'error_' + field.name" class="alert alert-danger mt-1 p-2" role="alert">
+                                                <small><t t-esc="errors.get(field.name)"/></small>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div> <!-- end #dynamic-form-fields-container -->
+
+                                <div class="mt-4 d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">Submit Form</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </template>
+
+        <!-- Dynamic Form Submission Confirmation Template -->
+        <template id="portal_dynamic_form_confirmation_template" name="Dynamic Form Submission Confirmation" inherit_id="dfr_farmer_portal.portal_layout">
+            <xpath expr="//t[@t-call-block='main_content_placeholder']" position="replace">
+                <div id="wrap" class="container my-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10 text-center">
+                             <div class="card shadow-sm">
+                                <div class="card-body p-5">
+                                    <i class="fa fa-check-circle fa-5x text-success mb-4"></i>
+                                    <h1 class="card-title h3">Form Submitted Successfully!</h1>
+                                    <p class="card-text fs-5 text-muted">
+                                        Thank you, your information has been successfully submitted.
+                                    </p>
+                                    <p class="card-text text-muted" t-if="message">
+                                        <t t-esc="message"/>
+                                    </p>
+                                    <div class="mt-4">
+                                        <a href="/dfr/info" class="btn btn-outline-secondary me-2">Learn more about DFR</a>
+                                        <a href="/" class="btn btn-primary">Back to Home</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </template>
+    </data>
+</odoo>

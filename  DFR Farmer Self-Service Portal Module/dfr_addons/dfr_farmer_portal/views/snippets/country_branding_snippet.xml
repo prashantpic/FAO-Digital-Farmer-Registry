@@ -1,0 +1,24 @@
+<odoo>
+    <data>
+        <!--
+            Country Logo Placeholder Snippet
+            Displays the country-specific logo, typically the current website's company logo.
+            Includes ARIA-compliant alt text and a fallback.
+            REQ-FSSP-001
+        -->
+        <template id="s_country_logo_placeholder" name="Country Logo Placeholder">
+            <t t-if="website and website.company_id and website.company_id.logo">
+                <img t-att-src="image_data_uri(website.company_id.logo)"
+                     class="img-fluid dfr-country-logo"
+                     style="max-height: 120px; width: auto;"
+                     t-att-alt="_('Logo of %s', website.company_id.name if website.company_id.name else _('the organization'))"/>
+            </t>
+            <t t-else="">
+                 <!-- Fallback text or placeholder image if no logo is configured -->
+                 <span class="dfr-country-logo-fallback text-muted" role="img" t-att-aria-label="_('Country Logo Placeholder')">
+                    <t t-esc="_('[Country Logo]')"/>
+                 </span>
+            </t>
+        </template>
+    </data>
+</odoo>

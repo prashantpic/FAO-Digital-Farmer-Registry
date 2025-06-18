@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <odoo>
+        <data noupdate="1"> <!-- noupdate="1" to prevent accidental overwrites on module update for groups -->
+
+            <!-- DFR Module Category -->
+            <record model="ir.module.category" id="module_category_dfr">
+                <field name="name">DFR</field>
+                <field name="description">Digital Farmer Registry specific functionalities and configurations.</field>
+                <field name="sequence">25</field> <!-- Adjust sequence as needed -->
+            </record>
+
+            <!-- DFR User Roles (Security Groups) -->
+            <record id="group_dfr_super_admin" model="res.groups">
+                <field name="name">DFR Super Administrator</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">Platform-wide administrative functions, core codebase oversight.</field>
+                <!-- Implied groups: Typically Super Admin implies admin rights -->
+                <field name="implied_ids" eval="[(4, ref('base.group_system'))]"/> 
+            </record>
+
+            <record id="group_dfr_national_admin" model="res.groups">
+                <field name="name">DFR National Administrator</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">Country-wide administration, user management, configuration for a specific country instance.</field>
+                <!-- National Admins might imply some lower-level DFR access or specific Odoo application access groups -->
+                 <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            </record>
+
+            <record id="group_dfr_supervisor" model="res.groups">
+                <field name="name">DFR Supervisor</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">Supervises enumerators, reviews data, manages assignments within their scope.</field>
+                 <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            </record>
+
+            <record id="group_dfr_enumerator" model="res.groups">
+                <field name="name">DFR Enumerator</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">Collects farmer data in the field using the mobile application.</field>
+                 <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            </record>
+
+            <record id="group_dfr_farmer_portal_user" model="res.groups">
+                <field name="name">DFR Farmer (Portal User)</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">Access for farmers via the Farmer Self-Service Portal.</field>
+                <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/> <!-- Implies Odoo portal user group -->
+            </record>
+
+            <record id="group_dfr_support_team" model="res.groups">
+                <field name="name">DFR Support Team</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">Provides technical assistance and troubleshooting.</field>
+                 <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            </record>
+
+            <record id="group_dfr_it_team" model="res.groups">
+                <field name="name">DFR IT Team</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">System maintenance, deployment, Odoo updates, data migration execution.</field>
+                 <field name="implied_ids" eval="[(4, ref('base.group_system'))]"/> <!-- Typically IT team needs high system access -->
+            </record>
+
+            <record id="group_dfr_policy_analyst" model="res.groups">
+                <field name="name">DFR Policy Maker/Analyst</field>
+                <field name="category_id" ref="module_category_dfr"/>
+                <field name="comment">Accesses aggregated data and analytics for decision-making.</field>
+                 <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            </record>
+
+        </data>
+    </odoo>

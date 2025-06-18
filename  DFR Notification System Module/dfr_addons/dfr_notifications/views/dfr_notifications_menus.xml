@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main DFR Notifications Menu -->
+    <menuitem
+        id="menu_dfr_notifications_root"
+        name="DFR Notifications"
+        sequence="90"
+        web_icon="dfr_notifications,static/description/icon.png" /> <!-- Assuming an icon exists -->
+
+    <!-- Configuration SubMenu -->
+    <menuitem
+        id="menu_dfr_notifications_config"
+        name="Configuration"
+        parent="menu_dfr_notifications_root"
+        sequence="10"/>
+
+    <menuitem
+        id="menu_dfr_notification_template"
+        name="Notification Templates"
+        parent="menu_dfr_notifications_config"
+        action="action_dfr_notification_template"
+        sequence="10"/>
+
+    <menuitem
+        id="menu_dfr_notification_gateway_config"
+        name="Gateway Configurations"
+        parent="menu_dfr_notifications_config"
+        action="action_dfr_notification_gateway_config"
+        sequence="20"/>
+
+    <!-- Logs SubMenu -->
+    <menuitem
+        id="menu_dfr_notification_log"
+        name="Dispatch Logs"
+        parent="menu_dfr_notifications_root"
+        action="action_dfr_notification_log"
+        sequence="20"/>
+</odoo>

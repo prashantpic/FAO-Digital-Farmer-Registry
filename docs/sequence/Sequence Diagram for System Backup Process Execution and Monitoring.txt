@@ -1,0 +1,48 @@
+sequenceDiagram
+    participant "DFR Backup & Restore Utility" as dfrOpsBackupRestore023
+    participant "PostgreSQL DB Container" as dfrInfraPostgresDbContainer020
+    participant "Odoo App Server Container" as dfrInfraOdooAppContainer019
+    participant "Monitoring & Alerting System" as dfrOpsMonitoringAlerting024
+
+    note over dfrOpsBackupRestore023, dfrInfraOdooAppContainer019: All backup files are stored securely, potentially using encryption, and may be replicated to an offsite/cloud location per DR plan (REQ-DIO-008, REQ-DIO-010).
+
+    loop Daily Scheduled Backup Job Initiated
+        activate dfrOpsBackupRestore023
+        note over dfrOpsBackupRestore023: DFR Backup & Restore Utility is triggered daily by an internal scheduler (e.g., cron job). The 'Loop' type for interaction 1 represents this daily cycle.
+        dfrOpsBackupRestore023-dfrOpsBackupRestore023: 1.1. Log: Backup process started
+        dfrOpsBackupRestore023-dfrInfraPostgresDbContainer020: 1.2. Request Database Dump (pgdump/pgbasebackup)
+        activate dfrInfraPostgresDbContainer020
+        note right of dfrInfraPostgresDbContainer020: Database dump method (pgdump or pgbasebackup + WAL archiving) is chosen based on RPO/RTO needs.
+        dfrInfraPostgresDbContainer020-dfrInfraPostgresDbContainer020: 1.2.1. Perform Database Dump Operation
+        dfrInfraPostgresDbContainer020--dfrOpsBackupRestore023: 1.2. Return Database Dump Data/Stream
+        deactivate dfrInfraPostgresDbContainer020
+        dfrOpsBackupRestore023-dfrOpsBackupRestore023: 1.3. Store Database Dump Securely
+        dfrOpsBackupRestore023-dfrOpsBackupRestore023: 1.4. Log: PostgreSQL backup status (Success/Failure)
+        dfrOpsBackupRestore023-dfrInfraOdooAppContainer019: 1.5. Request Odoo Files (modules, config, filestore)
+        activate dfrInfraOdooAppContainer019
+        note right of dfrInfraOdooAppContainer019: Odoo files backup includes custom modules, essential configuration files, and the filestore (attachments).
+        dfrInfraOdooAppContainer019-dfrInfraOdooAppContainer019: 1.5.1. Archive Odoo Files Operation
+        dfrInfraOdooAppContainer019--dfrOpsBackupRestore023: 1.5. Return Odoo Files Archive
+        deactivate dfrInfraOdooAppContainer019
+        dfrOpsBackupRestore023-dfrOpsBackupRestore023: 1.6. Store Odoo Files Archive Securely
+        dfrOpsBackupRestore023-dfrOpsBackupRestore023: 1.7. Log: Odoo files backup status (Success/Failure)
+        dfrOpsBackupRestore023-dfrOpsBackupRestore023: 1.8. Log: Overall Backup Job Completed (Success/Failure) to Central Log/Status File
+        deactivate dfrOpsBackupRestore023
+    end
+
+    note over dfrOpsMonitoringAlerting024: Monitoring System periodically checks logs/status written by the Backup Utility or polls a status endpoint if available.
+    dfrOpsMonitoringAlerting024-dfrOpsBackupRestore023: 2. Poll/Check Backup Status from Logs/Status File
+    activate dfrOpsBackupRestore023
+    dfrOpsBackupRestore023--dfrOpsMonitoringAlerting024: 2. Return Backup Status Information (Success/Failure)
+    deactivate dfrOpsBackupRestore023
+
+    activate dfrOpsMonitoringAlerting024
+    alt Process Backup Status and Alert if Necessary
+        alt Backup Failed
+            dfrOpsMonitoringAlerting024-dfrOpsMonitoringAlerting024: 3.1.1. Raise Alert (to Admin/Ops Team)
+            dfrOpsMonitoringAlerting024-dfrOpsMonitoringAlerting024: 3.1.2. Log: Alert Event for Backup Failure
+        else Backup Succeeded
+            dfrOpsMonitoringAlerting024-dfrOpsMonitoringAlerting024: 3.2.1. Log: Successful Backup Check
+        end
+    end
+    deactivate dfrOpsMonitoringAlerting024

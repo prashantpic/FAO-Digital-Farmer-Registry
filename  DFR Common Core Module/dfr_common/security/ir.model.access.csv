@@ -1,0 +1,19 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+# Access rights for res.config.settings are typically managed by Odoo's base module (e.g., group_system).
+# The dfr_common module extends res.config.settings, which is a TransientModel.
+# Access to the 'Settings' menu and its sub-menus (like the one created for DFR Common Settings)
+# is usually controlled by assigning groups (e.g., base.group_system) to the menuitem.
+# Fields added via inheritance to res.config.settings will be visible to users who
+# have access to the res.config.settings model and the specific settings view/menu.
+#
+# Mixin models (dfr.uid.mixin, dfr.audit.mixin) do not have their own tables and thus
+# do not have direct ACLs. Security for models inheriting these mixins is defined on
+# the inheriting models themselves.
+#
+# Abstract models (dfr.abstract.model) also do not have their own tables and do not
+# require direct ACLs. Security is managed on concrete models inheriting from them.
+#
+# If dfr_common were to introduce its own persistent models, their ACLs would be defined here.
+# For example, if there was a model named 'dfr.common.log_entry':
+# access_dfr_common_log_entry_admin,dfr.common.log_entry.admin,model_dfr_common_log_entry,base.group_system,1,1,1,1
+# access_dfr_common_log_entry_user,dfr.common.log_entry.user,model_dfr_common_log_entry,base.group_user,1,0,0,0

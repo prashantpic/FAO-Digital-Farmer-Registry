@@ -1,0 +1,87 @@
+<odoo>
+    <data>
+        <!-- Workflow Log Tree View -->
+        <record id="view_workflow_log_tree" model="ir.ui.view">
+            <field name="name">workflow.log.tree</field>
+            <field name="model">workflow.log</field>
+            <field name="arch" type="xml">
+                <tree string="Workflow Logs" decoration-danger="level=='error'" decoration-warning="level=='warning'" decoration-info="level=='info'">
+                    <field name="create_date" string="Timestamp"/>
+                    <field name="name"/>
+                    <field name="workflow_name"/>
+                    <field name="level"/>
+                    <field name="related_record_ref"/>
+                    <field name="user_id"/>
+                    <field name="message" string="Message (short)" class="o_text_overflow"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Workflow Log Form View (Read-only) -->
+        <record id="view_workflow_log_form" model="ir.ui.view">
+            <field name="name">workflow.log.form</field>
+            <field name="model">workflow.log</field>
+            <field name="arch" type="xml">
+                <form string="Workflow Log Entry" create="false" edit="false" delete="false">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="create_date" string="Timestamp"/>
+                                <field name="workflow_name"/>
+                            </group>
+                            <group>
+                                <field name="level"/>
+                                <field name="user_id"/>
+                                <field name="related_record_ref"/>
+                            </group>
+                        </group>
+                        <group string="Message Details">
+                            <field name="message" nolabel="1" widget="text" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Workflow Log Search View -->
+        <record id="view_workflow_log_search" model="ir.ui.view">
+            <field name="name">workflow.log.search</field>
+            <field name="model">workflow.log</field>
+            <field name="arch" type="xml">
+                <search string="Search Workflow Logs">
+                    <field name="name"/>
+                    <field name="workflow_name"/>
+                    <field name="message"/>
+                    <field name="level"/>
+                    <field name="user_id"/>
+                    <field name="related_record_ref"/>
+                    <field name="create_date"/>
+                    <separator/>
+                    <filter string="Errors" name="level_error" domain="[('level', '=', 'error')]"/>
+                    <filter string="Warnings" name="level_warning" domain="[('level', '=', 'warning')]"/>
+                    <filter string="Info" name="level_info" domain="[('level', '=', 'info')]"/>
+                    <filter string="Debug" name="level_debug" domain="[('level', '=', 'debug')]"/>
+                    <separator/>
+                    <filter string="Today" name="filter_today" domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')), ('create_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                    <filter string="This Week" name="filter_this_week" domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d 00:00:00')), ('create_date', '&lt;=', (context_today() + datetime.timedelta(days=6-context_today().weekday())).strftime('%Y-%m-%d 23:59:59'))]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Workflow Name" name="group_by_workflow_name" context="{'group_by':'workflow_name'}"/>
+                        <filter string="Level" name="group_by_level" context="{'group_by':'level'}"/>
+                        <filter string="User" name="group_by_user_id" context="{'group_by':'user_id'}"/>
+                        <filter string="Date" name="group_by_create_date" context="{'group_by':'create_date:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action for Workflow Log already defined in orchestrator_menus.xml
+            <record id="action_workflow_log_tree" model="ir.actions.act_window">
+                <field name="name">Workflow Logs</field>
+                <field name="res_model">workflow.log</field>
+                <field name="view_mode">tree,form</field>
+                <field name="search_view_id" ref="view_workflow_log_search"/>
+            </record>
+        -->
+    </data>
+</odoo>

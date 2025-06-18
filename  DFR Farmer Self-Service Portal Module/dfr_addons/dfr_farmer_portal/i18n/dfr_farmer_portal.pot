@@ -1,0 +1,29 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#   * dfr_farmer_portal
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: <>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: dfr_farmer_portal
+#: model:ir.model,name:dfr_farmer_portal.model_dfr_farmer_portal_main
+#msgid "DFR Farmer Portal Main Model (Placeholder)"
+#msgstr ""
+
+# Note: This .pot file is a basic placeholder.
+# Odoo's i18n tools will automatically scan the Python and XML files
+# for translatable strings (e.g., _("text") in Python, or text nodes in QWeb)
+# and generate the actual content for this file.
+# Ensure all user-facing strings in controllers, QWeb templates, and potentially
+# model field labels (if this module had its own models with user-facing labels)
+# are correctly marked for translation.

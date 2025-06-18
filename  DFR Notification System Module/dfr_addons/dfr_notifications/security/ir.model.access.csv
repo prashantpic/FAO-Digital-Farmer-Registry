@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dfr_notification_template_admin,dfr.notification.template.admin,model_dfr_notification_template,dfr_core_common.group_dfr_national_administrator,1,1,1,1
+access_dfr_notification_gateway_config_admin,dfr.notification.gateway.config.admin,model_dfr_notification_gateway_config,dfr_core_common.group_dfr_national_administrator,1,1,1,1
+access_dfr_notification_log_admin_read,dfr.notification.log.admin.read,model_dfr_notification_log,dfr_core_common.group_dfr_national_administrator,1,0,0,0
+access_dfr_notification_log_viewer_read,dfr.notification.log.viewer.read,model_dfr_notification_log,dfr_notifications.group_dfr_notification_log_viewer,1,0,0,0

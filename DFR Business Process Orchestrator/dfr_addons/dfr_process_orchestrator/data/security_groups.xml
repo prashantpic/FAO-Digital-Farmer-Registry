@@ -1,0 +1,22 @@
+<odoo>
+    <data>
+        <record id="group_dfr_workflow_administrator" model="res.groups">
+            <field name="name">DFR Workflow Administrator</field>
+            <field name="category_id" ref="base.module_category_administration_settings"/>
+            <field name="comment">Group for users managing DFR workflow configurations and logs.</field>
+            <!-- Users can be added to this group via the Odoo UI or by referencing specific users here if needed at installation.
+                 Example: <field name="users" eval="[(4, ref('base.user_root')),(4, ref('base.user_admin'))]"/>
+                 It's often better to manage user assignment to groups through the UI post-installation.
+            -->
+        </record>
+
+        <!-- If specific access to manual workflow wizard is needed beyond system admin -->
+        <!--
+        <record id="group_dfr_manual_workflow_operator" model="res.groups">
+            <field name="name">DFR Manual Workflow Operator</field>
+            <field name="category_id" ref="base.module_category_digital_farmer_registry"/>  Assuming a DFR category exists
+            <field name="comment">Group for users who can perform manual workflow interventions via the wizard.</field>
+        </record>
+        -->
+    </data>
+</odoo>

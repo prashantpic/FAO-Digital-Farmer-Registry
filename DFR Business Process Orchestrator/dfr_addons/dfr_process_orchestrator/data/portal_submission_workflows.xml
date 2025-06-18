@@ -1,0 +1,182 @@
+<odoo>
+    <data noupdate="1">
+
+        <!-- Server Action: Process New Portal Submission (Assign for Review) -->
+        <record id="action_server_process_new_portal_submission" model="ir.actions.server">
+            <field name="name">Server Action: Process New Portal Submission</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record: # record is a dfr.farmer
+    env['workflow.log'].log_event(
+        workflow_name='Portal Submission',
+        message=f"New portal submission received for {record.name} (Temp ID/Ref: {record.id}). Assigning for review.",
+        level='info',
+        record=record
+    )
+
+    assignee_user_id = None
+    assignee_group_id_str = env['orchestration.rule.config'].get_config_value(
+        'portal_submission', 
+        'review_assignee_group_id'
+    )
+    if assignee_group_id_str:
+        try:
+            group_id = int(assignee_group_id_str)
+            group = env['res.groups'].browse(group_id)
+            if group.exists() and group.users:
+                assignee_user_id = group.users[0].id # Assign to the first user of the group
+                env['workflow.log'].log_event(
+                    workflow_name='Portal Submission',
+                    message=f"Assigning review to user ID {assignee_user_id} from group {group.name} (ID: {group_id}).",
+                    level='debug', record=record
+                )
+            else:
+                env['workflow.log'].log_event(
+                    workflow_name='Portal Submission',
+                    message=f"Configured review group ID {group_id} not found or has no users. Activity not assigned to specific user from group.",
+                    level='warning', record=record
+                )
+        except ValueError:
+            env['workflow.log'].log_event(
+                workflow_name='Portal Submission',
+                message=f"Invalid group ID '{assignee_group_id_str}' configured for portal submission review.",
+                level='error', record=record
+            )
+    
+    if not assignee_user_id: # Fallback or if no group configured
+        # Try to assign to a default user, e.g., admin, or a specific role user if defined elsewhere
+        # For this example, let's assign to the user who triggered the action or admin if system
+        assignee_user_id = env.user.id if env.user.id != env.ref('base.public_user').id else env.ref('base.user_admin').id
+        env['workflow.log'].log_event(
+            workflow_name='Portal Submission',
+            message=f"No specific group assignee found, assigning review to user ID {assignee_user_id} (current/admin).",
+            level='debug', record=record
+        )
+
+    # Create an Odoo Activity
+    activity_type_id = env.ref('mail.mail_activity_data_todo').id # Standard ToDo activity
+    model_id = env['ir.model']._get(record._name).id
+    
+    activity_vals = {
+        'activity_type_id': activity_type_id,
+        'summary': f'Review New Farmer Portal Submission: {record.name or "N/A"}',
+        'note': f"A new farmer registration from the portal requires review and validation. Farmer Reference: {record.name or record.id}. Please verify details and update status.",
+        'res_id': record.id,
+        'res_model_id': model_id,
+        'user_id': assignee_user_id,
+    }
+    env['mail.activity'].create(activity_vals)
+    env['workflow.log'].log_event(
+        workflow_name='Portal Submission',
+        message=f"Activity created for user ID {assignee_user_id} to review portal submission for {record.name}.",
+        level='info', record=record
+    )
+
+    # Optional: Send internal Odoo notification/email to assignee(s)
+    # This might be redundant if the activity itself generates a notification.
+    # If explicit notification is needed:
+    #   target_user = env['res.users'].browse(assignee_user_id)
+    #   if target_user.exists():
+    #       record.message_post(
+    #           body=f"A new portal submission for '{record.name}' has been assigned to you for review.",
+    #           partner_ids=target_user.partner_id.ids, # Notify the user
+    #           subtype_xmlid='mail.mt_comment' # Generic comment
+    #       )
+            </field>
+        </record>
+
+        <!-- Automated Action: On New Portal Submission -->
+        <record id="automation_process_new_portal_submission" model="base.automation">
+            <field name="name">Automated: Process New Portal Submission</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <!-- Trigger on creation or if status becomes 'pending_verification' from 'portal' source -->
+            <field name="trigger">on_create_or_write</field>
+            <field name="filter_domain">[('source', '=', 'portal'), ('status', '=', 'pending_verification')]</field>
+            <!-- filter_pre_domain to run only when it enters this state, not on every write while in this state -->
+            <field name="filter_pre_domain">['|',('source','!=','portal'),('status','!=','pending_verification')]</field>
+            <field name="action_server_id" ref="action_server_process_new_portal_submission"/>
+        </record>
+
+        <!-- Portal Submission Approved: Leverages action_server_farmer_activated from farmer_lifecycle_workflows.xml -->
+        <!-- The automation_farmer_approved_from_pending in farmer_lifecycle_workflows.xml already covers this:
+             Trigger: On `dfr.farmer`, `status` changes from `'pending_verification'` to `'active'`.
+             This will apply to portal submissions as well if their source is 'portal' and they move through this status.
+        -->
+
+
+        <!-- Server Action: Process Portal Submission Rejected -->
+        <record id="action_server_process_portal_submission_rejected" model="ir.actions.server">
+            <field name="name">Server Action: Process Portal Submission Rejected</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="state">code</field>
+            <field name="code">
+if record: # record is a dfr.farmer
+    env['workflow.log'].log_event(
+        workflow_name='Portal Submission',
+        message=f"Portal submission for {record.name} (ID: {record.id}) has been rejected. Status: '{record.status}'.",
+        level='info',
+        record=record
+    )
+    
+    # Update farmer record with rejection reason (if a field exists, e.g., 'rejection_reason')
+    # rejection_reason = "Rejected during review process." # This should ideally be set by the user rejecting
+    # if hasattr(record, 'rejection_reason') and not record.rejection_reason:
+    #    record.write({'rejection_reason': rejection_reason})
+
+    # Send notification to farmer (if policy dictates and template exists)
+    template_key = 'portal_submission_rejected_template_id'
+    notification_template_id_str = env['orchestration.rule.config'].get_config_value(
+       'portal_submission', 
+       template_key
+    )
+    if notification_template_id_str:
+        try:
+            notification_template_id = int(notification_template_id_str)
+            # env['dfr.notification.engine'].trigger_notification(
+            #    record, # Farmer record
+            #    notification_template_id,
+            #    {'farmer_name': record.name, 'rejection_reason': getattr(record, 'rejection_reason', 'N/A')}
+            # )
+            env['workflow.log'].log_event(
+                workflow_name='Portal Submission',
+                message=f"Attempted to trigger 'Portal Submission Rejected' notification (template ID {notification_template_id_str}) for farmer {record.name}.",
+                level='debug', record=record
+            )
+        except ValueError:
+            env['workflow.log'].log_event(
+                workflow_name='Portal Submission',
+                message=f"Invalid notification template ID ({template_key}: {notification_template_id_str}) for portal submission rejection.",
+                level='error', record=record
+            )
+        except Exception as e:
+            env['workflow.log'].log_event(
+                workflow_name='Portal Submission',
+                message=f"Error triggering 'Portal Submission Rejected' notification for {record.name}: {str(e)}",
+                level='error', record=record
+            )
+
+    # Optional: Archive the rejected record
+    if hasattr(record, 'active'):
+        record.write({'active': False})
+        env['workflow.log'].log_event(
+            workflow_name='Portal Submission',
+            message=f"Farmer record {record.name} archived due to portal submission rejection.",
+            level='info', record=record
+        )
+            </field>
+        </record>
+
+        <!-- Automated Action: On Portal Submission Rejected -->
+        <record id="automation_process_portal_submission_rejected" model="base.automation">
+            <field name="name">Automated: Process Portal Submission Rejected</field>
+            <field name="model_id" ref="dfr_farmer_registry.model_dfr_farmer"/>
+            <field name="trigger">on_write</field>
+            <!-- Assuming 'rejected' is a valid status. Ensure 'source' is 'portal' for this specific workflow. -->
+            <field name="filter_domain">[('source', '=', 'portal'), ('status', '=', 'rejected')]</field>
+            <field name="filter_pre_domain">['&amp;', ('source', '=', 'portal'), ('status', '!=', 'rejected')]</field>
+            <field name="action_server_id" ref="action_server_process_portal_submission_rejected"/>
+        </record>
+
+    </data>
+</odoo>

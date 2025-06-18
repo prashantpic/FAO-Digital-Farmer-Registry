@@ -1,0 +1,193 @@
+site_name: 'Digital Farmer Registry (DFR) Documentation Portal'
+site_url: 'https://example.com/dfr-docs/' # Placeholder, to be updated with actual URL
+site_author: 'DFR Project Team'
+site_description: 'Comprehensive documentation and training materials for the Digital Farmer Registry (DFR) project.'
+
+repo_name: 'DFR_SYSTEM_DOCS_TRAINING' # Or actual Git repository name
+repo_url: 'https://github.com/example/dfr-docs-repo' # Placeholder, to be updated
+
+copyright: 'Copyright © DFR Project Team'
+
+theme:
+  name: 'material'
+  language: 'en' # Default language
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+    - content.tooltips
+  palette:
+    # Palette toggle for light/dark mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: 'blue'
+      accent: 'indigo'
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: 'blue'
+      accent: 'indigo'
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: 'Roboto'
+    code: 'Roboto Mono'
+  logo: 'assets/images/dfr_logo.png' # Placeholder for DFR logo
+  favicon: 'assets/images/dfr_favicon.ico' # Placeholder for DFR favicon
+
+plugins:
+  - search: # Enables client-side search
+      lang: # Add languages here as translations become available for search index
+        - en
+  - awesome-pages: # For cleaner navigation management in mkdocs.yml or separate .pages files
+      collapse_single_pages: true
+  - mermaid2: # For rendering Mermaid diagrams
+      # arguments: {'theme': 'forest'} # Example theme
+  - print-site: # For generating a printable version of the site or sections
+      add_to_navigation: true
+  # - i18n: # If mkdocs-static-i18n plugin is used for multilingual content
+  #     docs_structure: suffix # e.g., page.md, page.fr.md
+  #     languages:
+  #       - locale: en
+  #         default: true
+  #         name: English
+  #       - locale: fr_CK
+  #         name: French (Cook Islands) # Example, update as per project needs
+  #       # Add other supported languages from project config: sm_WS, to_TO, en_SB, bi_VU
+
+extra_css:
+  - 'assets/stylesheets/extra.css' # For custom styling
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - footnotes
+  - toc:
+      permalink: true # Adds a permalink to headings
+
+# Navigation - this will be a detailed representation of the docs/ directory structure
+# The 'awesome-pages' plugin can simplify this by inferring from directory structure or using .pages files.
+# Example structure if not using awesome-pages for full control:
+nav:
+  - 'Home': 'index.md'
+  - 'Overview': 'README.md'
+  - 'Glossary': 'glossary.md'
+  - 'Architecture':
+    - 'Overview': 'architecture/overview.md'
+    - 'Architectural Decision Records':
+      - 'ADR-001: Odoo Version Choice': 'architecture/adr/ADR-001-Choice-of-Odoo-Version.md'
+      # ... other ADRs
+    - 'Data Model':
+      - 'Core Entities Schema': 'architecture/data-model/core-entities-schema.md'
+      - 'Dynamic Forms Schema': 'architecture/data-model/dynamic-forms-schema.md'
+      - 'Audit Log Schema': 'architecture/data-model/audit-log-schema.md'
+      # ... other data model docs
+    - 'Deployment Strategy':
+      - 'Hosting & Deployment Strategy': 'architecture/deployment-strategy/hosting-deployment-strategy.md'
+      - 'Country-Specific Deployment Plan (Template)': 'architecture/deployment-strategy/country-specific-deployment-plan-template.md'
+      # ... other deployment docs
+  - 'Codebase Governance':
+    - 'Framework': 'codebase-governance/framework.md'
+  - 'Standards':
+    - 'Documentation Standards': 'standards/documentation-standards.md'
+    - 'Coding Standards': 'standards/coding-standards.md'
+  - 'Licensing':
+    - 'Open Source Declaration': 'licensing/open-source-declaration.md'
+  - 'User Manuals':
+    - 'Administrator Manual':
+      - 'Introduction': 'user-manuals/administrator-manual/index.md'
+      - '01. Introduction': 'user-manuals/administrator-manual/01-introduction.md'
+      - '02. User Management': 'user-manuals/administrator-manual/02-user-management.md'
+      - '03. Dynamic Form Builder': 'user-manuals/administrator-manual/03-dynamic-form-builder.md'
+      # ... other admin manual sections (e.g., Business Rules, Notifications, Analytics, Data Management, Localization, System Monitoring, Portal Management)
+    - 'Enumerator Manual':
+      - 'Introduction': 'user-manuals/enumerator-manual/index.md'
+      - 'Mobile App Overview': 'user-manuals/enumerator-manual/mobile-app-overview.md'
+      - '01. Farmer Search': 'user-manuals/enumerator-manual/01-farmer-search.md'
+      - '02. Farmer Registration (Mobile)': 'user-manuals/enumerator-manual/02-farmer-registration-mobile.md'
+      # ... other enumerator manual sections (e.g., Household Mgmt, Plot Mgmt, Dynamic Forms Mobile, Data Sync, Troubleshooting)
+    - 'Support Team Manual':
+      - 'Introduction': 'user-manuals/support-team-manual/index.md'
+      - '01. Ticketing SOP': 'user-manuals/support-team-manual/01-ticketing-sop.md'
+      # ... other support manual sections (e.g., Common Issues Web/Mobile, Data Quality, Escalation, User Account Support)
+    # - 'Farmer Portal Guide':
+    #   - 'Introduction': 'user-manuals/farmer-portal-guide/index.md'
+  - 'Developer Guides':
+    - 'Codebase Onboarding':
+      - 'Odoo Modules Overview': 'developer-guides/codebase-onboarding/odoo-modules-overview.md'
+      - 'Mobile App Architecture': 'developer-guides/codebase-onboarding/mobile-app-architecture.md'
+      - 'Setup Development Environment': 'developer-guides/codebase-onboarding/setup-development-environment.md'
+      # ... other onboarding sections
+    - 'API Developer Guide': 'developer-guides/api-developer-guide.md'
+    - 'CI/CD Pipeline': 'developer-guides/ci-cd-pipeline.md'
+    - 'Testing Strategy': 'developer-guides/testing-strategy.md'
+  - 'Training Materials':
+    - 'Quick Start Guides':
+      - 'Admin Quick Start': 'training-materials/quick-start-guides/admin-quick-start.md'
+      - 'Enumerator Mobile Quick Start': 'training-materials/quick-start-guides/enumerator-mobile-quick-start.md'
+      # ... other quick start guides
+    - 'Video Scripts & Assets':
+      - 'Administrator Videos':
+        - '01. User Management Script': 'training-materials/scripts-assets-for-videos/admin-videos/01-user-management-script.md'
+        # ... other admin video scripts
+      # - 'Enumerator Videos':
+        # ... enumerator video scripts
+    - 'Helpdesk SOPs': 'training-materials/helpdesk-sop/index.md'
+    - 'Change Management Toolkit': 'training-materials/change-management-toolkit/index.md'
+    - 'Train-the-Trainer Program':
+      - "Trainer's Guide": 'training-materials/tot-program/trainer-guide.md'
+      - "Participant's Workbook": 'training-materials/tot-program/participant-workbook.md'
+  - 'Knowledge Transfer Kit':
+    - 'Overview': 'knowledge-transfer-kit/index.md'
+    - 'Exit Checklist': 'knowledge-transfer-kit/exit-checklist.md'
+    - 'Final Reports':
+      - 'Data Migration Report (Template)': 'knowledge-transfer-kit/final-reports/data-migration-report-template.md'
+      - 'Lessons Learned (Template)': 'knowledge-transfer-kit/final-reports/lessons-learned-template.md'
+    - 'Credential & Config Matrix (Template)': 'knowledge-transfer-kit/credential-config-matrix-template.md'
+    - 'Handover Certificate (Template)': 'knowledge-transfer-kit/handover-certificate-template.md'
+
+extra:
+  social: # Example, adjust as needed
+    - icon: fontawesome/brands/github
+      link: 'https://github.com/example' # Placeholder
+  version:
+    provider: mike # If using mike for versioning documentation
+    default: latest
+
+# Required for mkdocs-static-i18n if used
+# languages:
+#   en: English
+#   fr_CK: Français (Îles Cook)
+#   sm_WS: Gagana Samoa
+#   to_TO: Lea faka-Tonga
+#   en_SB: English (Solomon Islands) # Assuming English is primary for SI, adjust if Pidgin or other
+#   bi_VU: Bislama
+
+# Default values from repository configuration
+# DocTool: MkDocs
+# DefaultLanguage: en
+# SupportedLanguages: [en, fr_CK, sm_WS, to_TO, en_SB, bi_VU]
+# RepositoryVersion: 1.0.0
+# ProjectName: Digital Farmer Registry (DFR) Documentation
+# OutputFormats: [HTML, PDF (via plugin if available)]

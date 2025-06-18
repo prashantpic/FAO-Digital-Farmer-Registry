@@ -1,0 +1,184 @@
+# GitLab CI template for DFR Odoo backend jobs.
+# Provides standardized, reusable job definitions for Odoo CI/CD.
+
+# --- Linting Template ---
+.odoo_lint_template:
+  stage: validate
+  image: python:3.9-slim # Or a custom image with linting tools pre-installed
+  variables:
+    ODOO_CUSTOM_ADDONS_PATH: "./dfr_addons" # Default path, override in job if needed
+  script:
+    - echo "Installing linting tools..."
+    - pip install flake8 pylint black # Add other linters as needed
+    - echo "Running flake8 on ${ODOO_CUSTOM_ADDONS_PATH}..."
+    - flake8 "${ODOO_CUSTOM_ADDONS_PATH}"
+    # - echo "Running pylint on ${ODOO_CUSTOM_ADDONS_PATH}..." # Pylint can be noisy, configure it well
+    # - pylint "${ODOO_CUSTOM_ADDONS_PATH}"
+    - echo "Checking code formatting with black on ${ODOO_CUSTOM_ADDONS_PATH}..."
+    - black --check --diff "${ODOO_CUSTOM_ADDONS_PATH}"
+  artifacts:
+    when: on_failure
+    paths:
+      - lint_report.txt # Example, if linters output to a file
+
+# --- Odoo Test Base Template (to be extended by unit/integration) ---
+.odoo_test_base_template:
+  stage: test
+  # The image should be one where Odoo and its dependencies are installed,
+  # or the Docker image built in a previous stage (e.g., $DOCKER_IMAGE_NAME_ODOO:$CI_COMMIT_SHA)
+  # For simplicity, using a generic Python image and assuming odoo-bin and deps are handled by run_odoo_tests.sh setup or pre-installed in a custom runner.
+  # A more robust setup would use an image with Odoo pre-installed or the one built by the pipeline.
+  image: python:3.9 # Placeholder; ideally an Odoo-ready image.
+  services:
+    - name: postgres:14-alpine
+      alias: db # Alias used by the script for DB_HOST
+  variables:
+    # Variables for run_odoo_tests.sh
+    # These are typically set by the job extending this template or GitLab CI/CD variables
+    # ODOO_DATABASE_NAME: "test_dfr_${CI_PIPELINE_ID}_${CI_JOB_ID}" # Example of a unique DB name
+    # ODOO_MODULES_TO_TEST: "dfr_farmer_registry,dfr_another_module"
+    # ODOO_ADDONS_PATH: "./dfr_addons,/usr/lib/python3/dist-packages/odoo/addons" # Example
+    # TEST_TYPE: "" # This will be 'unit' or 'integration'
+    DB_HOST: "db"
+    DB_PORT: "5432"
+    DB_USER: "odoo"        # Default Odoo user for tests
+    DB_PASSWORD: "odoo"    # Default Odoo password for tests
+    POSTGRES_DB: "postgres"    # Default DB for postgres service to init
+    POSTGRES_USER: "odoo"
+    POSTGRES_PASSWORD: "odoo"
+  before_script:
+    - echo "Waiting for PostgreSQL to be ready..."
+    # A more robust wait script might be needed here, e.g., using pg_isready
+    - apt-get update && apt-get install -y postgresql-client || yum install -y postgresql || apk add postgresql-client # Install pg_isready
+    - until pg_isready -h db -p 5432 -U $POSTGRES_USER; do sleep 1; done
+    - echo "PostgreSQL is ready."
+    # If odoo-bin is not in the image, setup steps would be here
+    # - pip install -r requirements.txt # If odoo and its deps need to be installed
+  script:
+    # Path to run_odoo_tests.sh relative to the project root in GitLab CI
+    # Ensure this script is executable (chmod +x)
+    - export ODOO_DATABASE_NAME="test_db_${CI_JOB_ID}" # Ensure unique DB name per job
+    - echo "Running Odoo tests with script: /dfr_operations/cicd_pipelines/scripts/common/run_odoo_tests.sh"
+    - /dfr_operations/cicd_pipelines/scripts/common/run_odoo_tests.sh
+  artifacts:
+    when: always # To capture logs/reports regardless of success/failure
+    paths:
+      - odoo_test_output.log # Assuming run_odoo_tests.sh might output to a log file
+      - test-reports/ # If tests generate JUnit XML or similar reports
+    reports:
+      junit: test-reports/junit.xml # If JUnit reports are generated
+
+# --- Odoo Unit Test Template ---
+.odoo_unit_test_template:
+  extends: .odoo_test_base_template
+  variables:
+    TEST_TYPE: "unit"
+    # ODOO_MODULES_TO_TEST: defined by the job
+
+# --- Odoo Integration Test Template ---
+.odoo_integration_test_template:
+  extends: .odoo_test_base_template
+  variables:
+    TEST_TYPE: "integration"
+    # ODOO_MODULES_TO_TEST: defined by the job
+
+# --- Build Odoo Docker Image Template ---
+.build_odoo_docker_template:
+  stage: build
+  image: docker:20.10.16 # Use a Docker image that has Docker client
+  services:
+    - docker:20.10.16-dind # Docker-in-Docker service
+  variables:
+    # DOCKER_IMAGE_NAME_ODOO: "$CI_REGISTRY_IMAGE/dfr-odoo-backend" # Defined globally or in job
+    # DOCKERFILE_PATH_ODOO: "path/to/odoo_modules/Dockerfile" # Defined by job
+    # BUILD_CONTEXT_ODOO: "path/to/odoo_modules" # Defined by job
+    DOCKER_TLS_CERTDIR: "/certs" # Required for Docker-in-Docker
+    OCI_SOURCE_URL: "$CI_PROJECT_URL"
+    OCI_REVISION: "$CI_COMMIT_SHA"
+    # OCI_VERSION will use IMAGE_TAG_VALUE
+  before_script:
+    - echo "Logging into GitLab Docker Registry: $CI_REGISTRY as $CI_REGISTRY_USER..."
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    # IMAGE_TAG_VALUE should be set by the job (e.g., $CI_COMMIT_TAG or $CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA)
+    # Example: export IMAGE_TAG_VALUE=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA}
+    - if [ -z "$IMAGE_TAG_VALUE" ]; then echo "Error: IMAGE_TAG_VALUE variable must be set by the job."; exit 1; fi
+    - if [ -z "$DOCKER_IMAGE_NAME_ODOO" ]; then echo "Error: DOCKER_IMAGE_NAME_ODOO variable must be set."; exit 1; fi
+    - if [ -z "$DOCKERFILE_PATH_ODOO" ]; then echo "Error: DOCKERFILE_PATH_ODOO variable must be set."; exit 1; fi
+    - if [ -z "$BUILD_CONTEXT_ODOO" ]; then echo "Error: BUILD_CONTEXT_ODOO variable must be set."; exit 1; fi
+    - export OCI_VERSION="$IMAGE_TAG_VALUE" # Set for build_odoo_docker.sh
+    # Path to build_odoo_docker.sh relative to the project root
+    - /dfr_operations/cicd_pipelines/scripts/common/build_odoo_docker.sh
+  variables: # Script inputs are passed as env vars
+    # DOCKER_IMAGE_NAME: "$DOCKER_IMAGE_NAME_ODOO" # Set by job or globally
+    # IMAGE_TAG: "$IMAGE_TAG_VALUE" # Set by job
+    # DOCKERFILE_PATH: "$DOCKERFILE_PATH_ODOO" # Set by job
+    # BUILD_CONTEXT: "$BUILD_CONTEXT_ODOO" # Set by job
+    PUSH_IMAGE: "true"
+    DOCKER_REGISTRY_URL: "$CI_REGISTRY"
+    # DOCKER_USERNAME and DOCKER_PASSWORD are not explicitly passed as script args,
+    # as docker login is handled in before_script using CI_REGISTRY_USER/PASSWORD.
+    # BUILD_ARGS: "--build-arg SOME_ARG=value" # Optional, set by job if needed
+
+# --- SAST SonarQube Scan Template (Odoo) ---
+.sast_sonar_odoo_template:
+  stage: scan
+  image: sonarsource/sonar-scanner-cli:5.0
+  variables:
+    # SONAR_HOST_URL: Provided by GitLab CI/CD variables
+    # SONAR_TOKEN: Provided by GitLab CI/CD variables (as SONAR_LOGIN or SONAR_TOKEN)
+    # SONAR_PROJECT_KEY_ODOO: "dfr_odoo_backend" # Example, override in job or set as CI/CD var
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar" # Defines the location of the SonarScanner analysis folder relative to the CI job workspace.
+    GIT_DEPTH: 0 # Fetches all history for more accurate SCM-based analysis
+    SOURCES_TO_SCAN_ODOO: "./dfr_addons" # Default, override in job if needed
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - echo "Running SonarQube scan for Odoo project..."
+    - >
+      sonar-scanner
+      -Dsonar.projectKey="${SONAR_PROJECT_KEY_ODOO}"
+      -Dsonar.sources="${SOURCES_TO_SCAN_ODOO}"
+      -Dsonar.host.url="${SONAR_HOST_URL}"
+      -Dsonar.login="${SONAR_TOKEN}"
+      -Dsonar.gitlab.project_id="${CI_PROJECT_ID}"
+      -Dsonar.gitlab.commit_sha="${CI_COMMIT_SHA}"
+      -Dsonar.gitlab.ref_name="${CI_COMMIT_REF_NAME}"
+      -Dsonar.gitlab.merge_request_iid="${CI_MERGE_REQUEST_IID}" # For MR decoration
+      # Add other Sonar parameters as needed (e.g., coverage reports, exclusions)
+  allow_failure: true # Or false if SAST failure should block the pipeline
+
+# --- DAST OWASP ZAP Scan Template (Odoo) ---
+.dast_zap_odoo_template:
+  stage: scan
+  image: owasp/zap2docker-stable # Official ZAP Docker image
+  variables:
+    # ZAP_TARGET_URL: "http://staging-dfr.example.com" # Must be set by the job or CI/CD variable. This is the URL of the deployed test instance.
+    ZAP_REPORT_FILENAME: "zap_report.html"
+    ZAP_CONFIG_FILE: "zap_baseline_config.conf" # Optional ZAP config file
+  script:
+    - if [ -z "$ZAP_TARGET_URL" ]; then echo "Error: ZAP_TARGET_URL must be set."; exit 1; fi
+    - echo "Starting OWASP ZAP baseline scan against ${ZAP_TARGET_URL}..."
+    # Create a minimal config file if not provided
+    - echo " faible" > ${ZAP_CONFIG_FILE} # Example: set alert threshold to 'faible' (low) for baseline
+    # Run ZAP baseline scan
+    # The scan runs against the ZAP_TARGET_URL. It's assumed this URL points to a running instance of the application.
+    # The current working directory in the CI job is often mounted to /zap/wrk/ in the ZAP container.
+    - >
+      zap-baseline.py
+      -t "${ZAP_TARGET_URL}"
+      -g "${ZAP_CONFIG_FILE}"
+      -r "${ZAP_REPORT_FILENAME}"
+      -J "${ZAP_REPORT_FILENAME}.json" # JSON report
+      # Add other ZAP parameters as needed, e.g., context file, rules to ignore.
+  artifacts:
+    when: always # Capture report even if ZAP finds issues or fails
+    paths:
+      - "${ZAP_REPORT_FILENAME}"
+      - "${ZAP_REPORT_FILENAME}.json"
+  allow_failure: true # Or false if DAST failure should block the pipeline
+  needs: # This job usually needs a deployment job to have created the ZAP_TARGET_URL instance
+    - job: deploy_odoo_to_staging # Example, adjust to the actual staging deployment job name
+      artifacts: false # Don't download artifacts from the deploy job unless needed for ZAP config
